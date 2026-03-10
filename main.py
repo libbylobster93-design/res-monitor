@@ -1,0 +1,162 @@
+from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from pydantic import BaseModel
+from typing import Optional
+from datetime import datetime
+import os
+
+from database import get_db, init_db
+
+app = FastAPI(title="Res Monitor")
+
+init_db()
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+
+@app.get("/")
+def index():
+    return FileResponse("static/index.html")
+
+
+# ── Models ──────────────────────────────────────────────────────────────────
+
+class ReservationIn(BaseModel):
+    restaurant: str
+    date: str
+    time: str
+    party_size: int
+    confirmation_number: Optional[str] = None
+    booked_on: Optional[str] = None
+
+
+class MonitorIn(BaseModel):
+    restaurant: str
+    criteria: str
+    platform: str
+    url: Optional[str] = None
+    status: Optional[str] = "watching"
+
+
+class MonitorPatch(BaseModel):
+    status: Optional[str] = None
+    last_checked: Optional[str] = None
+    criteria: Optional[str] = None
+
+
+class LogEntryIn(BaseModel):
+    restaurant: str
+    result: str
+    timestamp: Optional[str] = None
+
+
+# ── Reservations ─────────────────────────────────────────────────────────────
+
+@app.get("/api/reservations")
+def list_reservations():
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT * FROM reservations ORDER BY date ASC, time ASC"
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+@app.post("/api/reservations", status_code=201)
+def add_reservation(body: ReservationIn):
+    now = datetime.utcnow().isoformat()
+    conn = get_db()
+    cur = conn.execute(
+        "INSERT INTO reservations (restaurant, date, time, party_size, confirmation_number, booked_on, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (
+            body.restaurant,
+            body.date,
+            body.time,
+            body.party_size,
+            body.confirmation_number,
+            body.booked_on or now[:10],
+            now,
+        ),
+    )
+    conn.commit()
+    row = conn.execute("SELECT * FROM reservations WHERE id = ?", (cur.lastrowid,)).fetchone()
+    conn.close()
+    return dict(row)
+
+
+# ── Monitors ─────────────────────────────────────────────────────────────────
+
+@app.get("/api/monitors")
+def list_monitors():
+    conn = get_db()
+    rows = conn.execute("SELECT * FROM monitors ORDER BY restaurant ASC").fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+@app.post("/api/monitors", status_code=201)
+def add_monitor(body: MonitorIn):
+    now = datetime.utcnow().isoformat()
+    conn = get_db()
+    cur = conn.execute(
+        "INSERT INTO monitors (restaurant, criteria, platform, url, status, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        (body.restaurant, body.criteria, body.platform, body.url, body.status or "watching", now),
+    )
+    conn.commit()
+    row = conn.execute("SELECT * FROM monitors WHERE id = ?", (cur.lastrowid,)).fetchone()
+    conn.close()
+    return dict(row)
+
+
+@app.patch("/api/monitors/{monitor_id}")
+def update_monitor(monitor_id: int, body: MonitorPatch):
+    conn = get_db()
+    row = conn.execute("SELECT * FROM monitors WHERE id = ?", (monitor_id,)).fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Monitor not found")
+
+    updates = {}
+    if body.status is not None:
+        updates["status"] = body.status
+    if body.last_checked is not None:
+        updates["last_checked"] = body.last_checked
+    if body.criteria is not None:
+        updates["criteria"] = body.criteria
+
+    if updates:
+        set_clause = ", ".join(f"{k} = ?" for k in updates)
+        values = list(updates.values()) + [monitor_id]
+        conn.execute(f"UPDATE monitors SET {set_clause} WHERE id = ?", values)
+        conn.commit()
+
+    row = conn.execute("SELECT * FROM monitors WHERE id = ?", (monitor_id,)).fetchone()
+    conn.close()
+    return dict(row)
+
+
+# ── Check Log ────────────────────────────────────────────────────────────────
+
+@app.post("/api/log", status_code=201)
+def add_log(body: LogEntryIn):
+    ts = body.timestamp or datetime.utcnow().isoformat()
+    conn = get_db()
+    cur = conn.execute(
+        "INSERT INTO check_log (timestamp, restaurant, result) VALUES (?, ?, ?)",
+        (ts, body.restaurant, body.result),
+    )
+    conn.commit()
+    row = conn.execute("SELECT * FROM check_log WHERE id = ?", (cur.lastrowid,)).fetchone()
+    conn.close()
+    return dict(row)
+
+
+@app.get("/api/log")
+def get_log():
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT * FROM check_log ORDER BY timestamp DESC LIMIT 20"
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]

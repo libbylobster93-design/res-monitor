@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Res Monitor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            surface: '#111827',
+            card: '#1f2937',
+            border: '#374151',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background-color: #0f1117; }
+    .badge-opentable { background: #dc2626; }
+    .badge-tock      { background: #d97706; }
+    .badge-resy      { background: #2563eb; }
+    .badge-bento     { background: #7c3aed; }
+    .badge-other     { background: #4b5563; }
+    .status-confirmed { color: #4ade80; }
+    .status-watching  { color: #facc15; }
+    .status-failed    { color: #f87171; }
+    table { border-collapse: collapse; width: 100%; }
+    th { text-align: left; padding: 10px 12px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #9ca3af; border-bottom: 1px solid #374151; }
+    td { padding: 10px 12px; font-size: 0.875rem; color: #e5e7eb; border-bottom: 1px solid #1f2937; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #1a2233; }
+    .section-card { background: #1f2937; border-radius: 10px; margin-bottom: 2rem; overflow: hidden; }
+    .section-header { padding: 16px 20px; border-bottom: 1px solid #374151; display: flex; align-items: center; gap: 10px; }
+    .section-title { font-size: 1rem; font-weight: 600; color: #f9fafb; }
+    .count-badge { background: #374151; color: #9ca3af; border-radius: 9999px; padding: 1px 8px; font-size: 0.75rem; }
+  </style>
+</head>
+<body class="min-h-screen text-gray-100">
+
+  <!-- PASSWORD GATE -->
+  <div id="gate" class="min-h-screen flex items-center justify-center">
+    <div class="bg-gray-800 rounded-2xl p-10 w-full max-w-sm shadow-2xl text-center">
+      <div class="text-4xl mb-3">🦞</div>
+      <h1 class="text-2xl font-bold text-white mb-1">Res Monitor</h1>
+      <p class="text-gray-400 text-sm mb-6">Bay Area Bucket List</p>
+      <input
+        id="pw-input"
+        type="password"
+        placeholder="Password"
+        class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 mb-3"
+        autofocus
+      />
+      <button
+        onclick="checkPassword()"
+        class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 rounded-lg transition"
+      >Enter</button>
+      <p id="pw-error" class="text-red-400 text-sm mt-3 hidden">Incorrect password.</p>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="dashboard" class="hidden max-w-6xl mx-auto px-4 py-8">
+
+    <!-- Header -->
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold text-white">🦞 Res Monitor</h1>
+      <p class="text-gray-400 mt-1">Bay Area Bucket List</p>
+    </div>
+
+    <!-- Confirmed Reservations -->
+    <div class="section-card">
+      <div class="section-header">
+        <span class="text-green-400 text-lg">✓</span>
+        <span class="section-title">Confirmed Reservations</span>
+        <span id="res-count" class="count-badge">0</span>
+        <button onclick="showAddReservationModal()" class="ml-auto text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg transition">+ Add</button>
+      </div>
+      <div class="overflow-x-auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Restaurant</th>
+              <th>Date</th>
+              <th>Time</th>
+              <th>Party</th>
+              <th>Confirmation #</th>
+              <th>Booked On</th>
+            </tr>
+          </thead>
+          <tbody id="res-tbody">
+            <tr><td colspan="6" class="text-gray-500 text-center py-8">No confirmed reservations yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Monitoring -->
+    <div class="section-card">
+      <div class="section-header">
+        <span class="text-yellow-400 text-lg">◎</span>
+        <span class="section-title">Monitoring</span>
+        <span id="mon-count" class="count-badge">0</span>
+        <button onclick="showAddMonitorModal()" class="ml-auto text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg transition">+ Add</button>
+      </div>
+      <div class="overflow-x-auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Restaurant</th>
+              <th>Criteria</th>
+              <th>Platform</th>
+              <th>Status</th>
+              <th>Last Checked</th>
+            </tr>
+          </thead>
+          <tbody id="mon-tbody">
+            <tr><td colspan="5" class="text-gray-500 text-center py-8">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Check Log -->
+    <div class="section-card">
+      <div class="section-header">
+        <span class="text-blue-400 text-lg">≡</span>
+        <span class="section-title">Check Log</span>
+        <span class="text-gray-500 text-xs ml-1">(last 20)</span>
+        <button onclick="showAddLogModal()" class="ml-auto text-xs bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded-lg transition">+ Log Entry</button>
+      </div>
+      <div class="overflow-x-auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Restaurant</th>
+              <th>Result</th>
+            </tr>
+          </thead>
+          <tbody id="log-tbody">
+            <tr><td colspan="3" class="text-gray-500 text-center py-8">No log entries yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <p class="text-center text-gray-600 text-xs pb-6">Last refreshed: <span id="last-refresh">—</span> · <button onclick="loadAll()" class="underline hover:text-gray-400">Refresh</button></p>
+  </div>
+
+  <!-- ADD RESERVATION MODAL -->
+  <div id="res-modal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4">
+    <div class="bg-gray-800 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+      <h2 class="text-lg font-bold mb-4 text-white">Add Confirmed Reservation</h2>
+      <div class="space-y-3">
+        <input id="r-restaurant" type="text" placeholder="Restaurant" class="input-field" />
+        <input id="r-date" type="date" class="input-field" />
+        <input id="r-time" type="text" placeholder="Time (e.g. 7:00 PM)" class="input-field" />
+        <input id="r-party" type="number" placeholder="Party Size" class="input-field" />
+        <input id="r-conf" type="text" placeholder="Confirmation # (optional)" class="input-field" />
+        <input id="r-booked" type="date" class="input-field" />
+      </div>
+      <div class="flex gap-3 mt-5">
+        <button onclick="submitReservation()" class="flex-1 bg-green-600 hover:bg-green-500 text-white font-semibold py-2.5 rounded-lg transition">Save</button>
+        <button onclick="closeModal('res-modal')" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2.5 rounded-lg transition">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD MONITOR MODAL -->
+  <div id="mon-modal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4">
+    <div class="bg-gray-800 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+      <h2 class="text-lg font-bold mb-4 text-white">Add Monitor</h2>
+      <div class="space-y-3">
+        <input id="m-restaurant" type="text" placeholder="Restaurant" class="input-field" />
+        <input id="m-criteria" type="text" placeholder="Criteria (date range, time, party)" class="input-field" />
+        <select id="m-platform" class="input-field">
+          <option value="OpenTable">OpenTable</option>
+          <option value="Tock">Tock</option>
+          <option value="Resy">Resy</option>
+          <option value="Bento">Bento</option>
+          <option value="Other">Other</option>
+        </select>
+        <input id="m-url" type="url" placeholder="URL (optional)" class="input-field" />
+      </div>
+      <div class="flex gap-3 mt-5">
+        <button onclick="submitMonitor()" class="flex-1 bg-yellow-600 hover:bg-yellow-500 text-white font-semibold py-2.5 rounded-lg transition">Save</button>
+        <button onclick="closeModal('mon-modal')" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2.5 rounded-lg transition">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD LOG MODAL -->
+  <div id="log-modal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4">
+    <div class="bg-gray-800 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+      <h2 class="text-lg font-bold mb-4 text-white">Add Log Entry</h2>
+      <div class="space-y-3">
+        <input id="l-restaurant" type="text" placeholder="Restaurant" class="input-field" />
+        <input id="l-result" type="text" placeholder="Result / notes" class="input-field" />
+      </div>
+      <div class="flex gap-3 mt-5">
+        <button onclick="submitLog()" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-lg transition">Save</button>
+        <button onclick="closeModal('log-modal')" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2.5 rounded-lg transition">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .input-field {
+      width: 100%;
+      background: #111827;
+      border: 1px solid #374151;
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: white;
+      font-size: 0.875rem;
+      outline: none;
+      box-sizing: border-box;
+    }
+    .input-field:focus { border-color: #6366f1; }
+    .input-field::placeholder { color: #6b7280; }
+    select.input-field option { background: #1f2937; }
+  </style>
+
+  <script>
+    const PASSWORD = "libbylobster";
+    const SESSION_KEY = "res_monitor_auth";
+
+    function checkPassword() {
+      const val = document.getElementById("pw-input").value;
+      if (val === PASSWORD) {
+        sessionStorage.setItem(SESSION_KEY, "1");
+        showDashboard();
+      } else {
+        document.getElementById("pw-error").classList.remove("hidden");
+      }
+    }
+
+    document.getElementById("pw-input").addEventListener("keydown", e => {
+      if (e.key === "Enter") checkPassword();
+    });
+
+    function showDashboard() {
+      document.getElementById("gate").classList.add("hidden");
+      document.getElementById("dashboard").classList.remove("hidden");
+      loadAll();
+    }
+
+    // Check session on load
+    if (sessionStorage.getItem(SESSION_KEY)) {
+      showDashboard();
+    }
+
+    // ── Data loading ──────────────────────────────────────────────────────────
+
+    async function loadAll() {
+      await Promise.all([loadReservations(), loadMonitors(), loadLog()]);
+      document.getElementById("last-refresh").textContent = new Date().toLocaleTimeString();
+    }
+
+    async function loadReservations() {
+      const res = await fetch("/api/reservations");
+      const data = await res.json();
+      const tbody = document.getElementById("res-tbody");
+      document.getElementById("res-count").textContent = data.length;
+      if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-gray-500 text-center py-8">No confirmed reservations yet.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = data.map(r => `
+        <tr>
+          <td class="font-medium text-white">${esc(r.restaurant)}</td>
+          <td>${formatDate(r.date)}</td>
+          <td>${esc(r.time)}</td>
+          <td>${r.party_size}</td>
+          <td class="font-mono text-gray-300">${esc(r.confirmation_number || '—')}</td>
+          <td class="text-gray-400">${formatDate(r.booked_on)}</td>
+        </tr>
+      `).join("");
+    }
+
+    async function loadMonitors() {
+      const res = await fetch("/api/monitors");
+      const data = await res.json();
+      const tbody = document.getElementById("mon-tbody");
+      document.getElementById("mon-count").textContent = data.length;
+      tbody.innerHTML = data.map(m => `
+        <tr>
+          <td>
+            <span class="font-medium text-white">${esc(m.restaurant)}</span>
+            ${m.url ? `<br><a href="${esc(m.url)}" target="_blank" class="text-indigo-400 hover:text-indigo-300 text-xs">${esc(m.url)}</a>` : ''}
+          </td>
+          <td class="text-gray-400 text-xs max-w-xs">${esc(m.criteria)}</td>
+          <td><span class="badge-${m.platform.toLowerCase()} text-white text-xs font-semibold px-2 py-0.5 rounded-full">${esc(m.platform)}</span></td>
+          <td><span class="status-${m.status.toLowerCase()} font-medium capitalize">${esc(m.status)}</span></td>
+          <td class="text-gray-500 text-xs">${m.last_checked ? formatDateTime(m.last_checked) : '—'}</td>
+        </tr>
+      `).join("");
+    }
+
+    async function loadLog() {
+      const res = await fetch("/api/log");
+      const data = await res.json();
+      const tbody = document.getElementById("log-tbody");
+      if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="text-gray-500 text-center py-8">No log entries yet.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = data.map(l => `
+        <tr>
+          <td class="text-gray-500 text-xs font-mono whitespace-nowrap">${formatDateTime(l.timestamp)}</td>
+          <td class="font-medium">${esc(l.restaurant)}</td>
+          <td class="text-gray-300">${esc(l.result)}</td>
+        </tr>
+      `).join("");
+    }
+
+    // ── Modals ────────────────────────────────────────────────────────────────
+
+    function showAddReservationModal() { document.getElementById("res-modal").classList.remove("hidden"); }
+    function showAddMonitorModal()     { document.getElementById("mon-modal").classList.remove("hidden"); }
+    function showAddLogModal()         { document.getElementById("log-modal").classList.remove("hidden"); }
+    function closeModal(id)            { document.getElementById(id).classList.add("hidden"); }
+
+    // Close modals on backdrop click
+    ["res-modal", "mon-modal", "log-modal"].forEach(id => {
+      document.getElementById(id).addEventListener("click", function(e) {
+        if (e.target === this) closeModal(id);
+      });
+    });
+
+    async function submitReservation() {
+      const body = {
+        restaurant: document.getElementById("r-restaurant").value,
+        date: document.getElementById("r-date").value,
+        time: document.getElementById("r-time").value,
+        party_size: parseInt(document.getElementById("r-party").value),
+        confirmation_number: document.getElementById("r-conf").value || null,
+        booked_on: document.getElementById("r-booked").value || null,
+      };
+      if (!body.restaurant || !body.date || !body.time || !body.party_size) return alert("Please fill in required fields.");
+      await fetch("/api/reservations", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body) });
+      closeModal("res-modal");
+      loadReservations();
+    }
+
+    async function submitMonitor() {
+      const body = {
+        restaurant: document.getElementById("m-restaurant").value,
+        criteria: document.getElementById("m-criteria").value,
+        platform: document.getElementById("m-platform").value,
+        url: document.getElementById("m-url").value || null,
+      };
+      if (!body.restaurant || !body.criteria) return alert("Please fill in required fields.");
+      await fetch("/api/monitors", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body) });
+      closeModal("mon-modal");
+      loadMonitors();
+    }
+
+    async function submitLog() {
+      const body = {
+        restaurant: document.getElementById("l-restaurant").value,
+        result: document.getElementById("l-result").value,
+      };
+      if (!body.restaurant || !body.result) return alert("Please fill in required fields.");
+      await fetch("/api/log", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body) });
+      closeModal("log-modal");
+      loadLog();
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    function esc(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function formatDate(str) {
+      if (!str) return '—';
+      // Parse YYYY-MM-DD without timezone shift
+      const [y, m, d] = str.split('T')[0].split('-');
+      if (!y || !m || !d) return str;
+      const date = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function formatDateTime(str) {
+      if (!str) return '—';
+      const d = new Date(str);
+      if (isNaN(d)) return str;
+      return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    }
+  </script>
+</body>
+</html>
