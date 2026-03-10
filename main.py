@@ -37,12 +37,15 @@ class MonitorIn(BaseModel):
     platform: str
     url: Optional[str] = None
     status: Optional[str] = "watching"
+    prepaid: Optional[int] = 0
+    auto_book: Optional[int] = 0
 
 
 class MonitorPatch(BaseModel):
     status: Optional[str] = None
     last_checked: Optional[str] = None
     criteria: Optional[str] = None
+    auto_book: Optional[int] = None
 
 
 class LogEntryIn(BaseModel):
@@ -100,11 +103,26 @@ def add_monitor(body: MonitorIn):
     now = datetime.utcnow().isoformat()
     conn = get_db()
     cur = conn.execute(
-        "INSERT INTO monitors (restaurant, criteria, platform, url, status, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-        (body.restaurant, body.criteria, body.platform, body.url, body.status or "watching", now),
+        "INSERT INTO monitors (restaurant, criteria, platform, url, status, prepaid, auto_book, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (body.restaurant, body.criteria, body.platform, body.url, body.status or "watching", body.prepaid or 0, body.auto_book or 0, now),
     )
     conn.commit()
     row = conn.execute("SELECT * FROM monitors WHERE id = ?", (cur.lastrowid,)).fetchone()
+    conn.close()
+    return dict(row)
+
+
+@app.patch("/api/monitors/{monitor_id}/toggle-autobook")
+def toggle_autobook(monitor_id: int):
+    conn = get_db()
+    row = conn.execute("SELECT * FROM monitors WHERE id = ?", (monitor_id,)).fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Monitor not found")
+    new_val = 0 if row["auto_book"] else 1
+    conn.execute("UPDATE monitors SET auto_book = ? WHERE id = ?", (new_val, monitor_id))
+    conn.commit()
+    row = conn.execute("SELECT * FROM monitors WHERE id = ?", (monitor_id,)).fetchone()
     conn.close()
     return dict(row)
 
@@ -124,6 +142,8 @@ def update_monitor(monitor_id: int, body: MonitorPatch):
         updates["last_checked"] = body.last_checked
     if body.criteria is not None:
         updates["criteria"] = body.criteria
+    if body.auto_book is not None:
+        updates["auto_book"] = body.auto_book
 
     if updates:
         set_clause = ", ".join(f"{k} = ?" for k in updates)

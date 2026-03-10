@@ -31,13 +31,28 @@
     .status-failed    { color: #f87171; }
     table { border-collapse: collapse; width: 100%; }
     th { text-align: left; padding: 10px 12px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #9ca3af; border-bottom: 1px solid #374151; }
-    td { padding: 10px 12px; font-size: 0.875rem; color: #e5e7eb; border-bottom: 1px solid #1f2937; vertical-align: top; }
+    td { padding: 10px 12px; font-size: 0.875rem; color: #e5e7eb; border-bottom: 1px solid #1f2937; vertical-align: middle; }
     tr:last-child td { border-bottom: none; }
     tr:hover td { background: #1a2233; }
     .section-card { background: #1f2937; border-radius: 10px; margin-bottom: 2rem; overflow: hidden; }
     .section-header { padding: 16px 20px; border-bottom: 1px solid #374151; display: flex; align-items: center; gap: 10px; }
     .section-title { font-size: 1rem; font-weight: 600; color: #f9fafb; }
     .count-badge { background: #374151; color: #9ca3af; border-radius: 9999px; padding: 1px 8px; font-size: 0.75rem; }
+    /* Toggle switch */
+    .toggle-track {
+      position: relative; display: inline-flex; align-items: center;
+      width: 36px; height: 20px; border-radius: 9999px;
+      cursor: pointer; transition: background-color 0.2s;
+      flex-shrink: 0; border: none; padding: 0;
+    }
+    .toggle-track.on  { background: #22c55e; }
+    .toggle-track.off { background: #4b5563; }
+    .toggle-thumb {
+      position: absolute; width: 14px; height: 14px; border-radius: 9999px;
+      background: white; transition: transform 0.2s; pointer-events: none;
+    }
+    .toggle-track.on  .toggle-thumb { transform: translateX(19px); }
+    .toggle-track.off .toggle-thumb { transform: translateX(3px); }
   </style>
 </head>
 <body class="min-h-screen text-gray-100">
@@ -67,9 +82,15 @@
   <div id="dashboard" class="hidden max-w-6xl mx-auto px-4 py-8">
 
     <!-- Header -->
-    <div class="mb-8">
-      <h1 class="text-3xl font-bold text-white">🦞 Res Monitor</h1>
-      <p class="text-gray-400 mt-1">Bay Area Bucket List</p>
+    <div class="mb-8 flex items-start justify-between flex-wrap gap-2">
+      <div>
+        <h1 class="text-3xl font-bold text-white">🦞 Res Monitor</h1>
+        <p class="text-gray-400 mt-1">Bay Area Bucket List</p>
+      </div>
+      <div class="text-right text-xs text-gray-500 pt-2 self-center">
+        Last updated: <span id="last-updated">—</span>
+        &nbsp;·&nbsp;<button onclick="loadAll()" class="underline hover:text-gray-400">Refresh</button>
+      </div>
     </div>
 
     <!-- Confirmed Reservations -->
@@ -116,10 +137,11 @@
               <th>Platform</th>
               <th>Status</th>
               <th>Last Checked</th>
+              <th>Auto-Book</th>
             </tr>
           </thead>
           <tbody id="mon-tbody">
-            <tr><td colspan="5" class="text-gray-500 text-center py-8">Loading...</td></tr>
+            <tr><td colspan="6" class="text-gray-500 text-center py-8">Loading...</td></tr>
           </tbody>
         </table>
       </div>
@@ -149,7 +171,6 @@
       </div>
     </div>
 
-    <p class="text-center text-gray-600 text-xs pb-6">Last refreshed: <span id="last-refresh">—</span> · <button onclick="loadAll()" class="underline hover:text-gray-400">Refresh</button></p>
   </div>
 
   <!-- ADD RESERVATION MODAL -->
@@ -186,6 +207,10 @@
           <option value="Other">Other</option>
         </select>
         <input id="m-url" type="url" placeholder="URL (optional)" class="input-field" />
+        <label class="flex items-center gap-2 text-sm text-gray-300 cursor-pointer select-none">
+          <input id="m-prepaid" type="checkbox" class="w-4 h-4 rounded accent-yellow-500" />
+          Prepaid (charged at booking — non-refundable)
+        </label>
       </div>
       <div class="flex gap-3 mt-5">
         <button onclick="submitMonitor()" class="flex-1 bg-yellow-600 hover:bg-yellow-500 text-white font-semibold py-2.5 rounded-lg transition">Save</button>
@@ -227,7 +252,7 @@
   </style>
 
   <script>
-    const PASSWORD = "libbylobster";
+    const PASSWORD = "libbyl0bster";
     const SESSION_KEY = "res_monitor_auth";
 
     function checkPassword() {
@@ -244,10 +269,15 @@
       if (e.key === "Enter") checkPassword();
     });
 
+    let _refreshInterval = null;
+
     function showDashboard() {
       document.getElementById("gate").classList.add("hidden");
       document.getElementById("dashboard").classList.remove("hidden");
       loadAll();
+      if (!_refreshInterval) {
+        _refreshInterval = setInterval(loadAll, 60000);
+      }
     }
 
     // Check session on load
@@ -259,7 +289,7 @@
 
     async function loadAll() {
       await Promise.all([loadReservations(), loadMonitors(), loadLog()]);
-      document.getElementById("last-refresh").textContent = new Date().toLocaleTimeString();
+      document.getElementById("last-updated").textContent = new Date().toLocaleTimeString();
     }
 
     async function loadReservations() {
@@ -288,18 +318,37 @@
       const data = await res.json();
       const tbody = document.getElementById("mon-tbody");
       document.getElementById("mon-count").textContent = data.length;
-      tbody.innerHTML = data.map(m => `
+      tbody.innerHTML = data.map(m => {
+        const isPrepaid = m.prepaid === 1 || m.prepaid === true;
+        const isAutoBook = m.auto_book === 1 || m.auto_book === true;
+        const dot = isPrepaid
+          ? '<span title="Prepaid — charged at booking" style="font-size:0.65rem;line-height:1">🟡</span>'
+          : '<span title="Credit card hold" style="font-size:0.65rem;line-height:1">🟢</span>';
+        const prepaidBadge = isPrepaid
+          ? '<span title="Charged at booking — no refund" style="cursor:help;font-size:0.85rem">⚠️</span>'
+          : '';
+        const toggleClass = isAutoBook ? 'on' : 'off';
+        const toggle = `<div style="display:flex;align-items:center;gap:6px">
+            <button class="toggle-track ${toggleClass}" onclick="toggleAutoBook(event,${m.id},${isAutoBook ? 1 : 0},${isPrepaid ? 1 : 0})" title="${isAutoBook ? 'Auto-book ON' : 'Auto-book OFF'}">
+              <div class="toggle-thumb"></div>
+            </button>${prepaidBadge}
+          </div>`;
+        return `
         <tr>
           <td>
-            <span class="font-medium text-white">${esc(m.restaurant)}</span>
-            ${m.url ? `<br><a href="${esc(m.url)}" target="_blank" class="text-indigo-400 hover:text-indigo-300 text-xs">${esc(m.url)}</a>` : ''}
+            <div style="display:flex;align-items:center;gap:5px">
+              ${dot}
+              <span class="font-medium text-white">${esc(m.restaurant)}</span>
+            </div>
+            ${m.url ? `<a href="${esc(m.url)}" target="_blank" class="text-indigo-400 hover:text-indigo-300 text-xs" style="margin-left:1.1rem">${esc(m.url)}</a>` : ''}
           </td>
           <td class="text-gray-400 text-xs max-w-xs">${esc(m.criteria)}</td>
           <td><span class="badge-${m.platform.toLowerCase()} text-white text-xs font-semibold px-2 py-0.5 rounded-full">${esc(m.platform)}</span></td>
           <td><span class="status-${m.status.toLowerCase()} font-medium capitalize">${esc(m.status)}</span></td>
           <td class="text-gray-500 text-xs">${m.last_checked ? formatDateTime(m.last_checked) : '—'}</td>
-        </tr>
-      `).join("");
+          <td>${toggle}</td>
+        </tr>`;
+      }).join("");
     }
 
     async function loadLog() {
@@ -319,6 +368,19 @@
       `).join("");
     }
 
+    // ── Auto-book toggle ──────────────────────────────────────────────────────
+
+    async function toggleAutoBook(e, id, currentVal, isPrepaid) {
+      e.stopPropagation();
+      const turningOn = !currentVal;
+      if (turningOn && isPrepaid) {
+        const ok = confirm("⚠️ This restaurant charges in full at booking and is non-refundable. Enable auto-booking anyway?");
+        if (!ok) return;
+      }
+      await fetch(`/api/monitors/${id}/toggle-autobook`, { method: 'PATCH' });
+      loadMonitors();
+    }
+
     // ── Modals ────────────────────────────────────────────────────────────────
 
     function showAddReservationModal() { document.getElementById("res-modal").classList.remove("hidden"); }
@@ -335,40 +397,70 @@
 
     async function submitReservation() {
       const body = {
-        restaurant: document.getElementById("r-restaurant").value,
+        restaurant: document.getElementById("r-restaurant").value.trim(),
         date: document.getElementById("r-date").value,
-        time: document.getElementById("r-time").value,
+        time: document.getElementById("r-time").value.trim(),
         party_size: parseInt(document.getElementById("r-party").value),
-        confirmation_number: document.getElementById("r-conf").value || null,
+        confirmation_number: document.getElementById("r-conf").value.trim() || null,
         booked_on: document.getElementById("r-booked").value || null,
       };
-      if (!body.restaurant || !body.date || !body.time || !body.party_size) return alert("Please fill in required fields.");
-      await fetch("/api/reservations", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body) });
+      if (!body.restaurant || !body.date || !body.time || !body.party_size) {
+        return alert("Please fill in Restaurant, Date, Time, and Party Size.");
+      }
+      const resp = await fetch("/api/reservations", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(body),
+      });
+      if (!resp.ok) return alert("Failed to save reservation.");
       closeModal("res-modal");
+      ["r-restaurant","r-date","r-time","r-party","r-conf","r-booked"].forEach(id => {
+        document.getElementById(id).value = "";
+      });
       loadReservations();
     }
 
     async function submitMonitor() {
+      const isPrepaid = document.getElementById("m-prepaid").checked;
       const body = {
-        restaurant: document.getElementById("m-restaurant").value,
-        criteria: document.getElementById("m-criteria").value,
+        restaurant: document.getElementById("m-restaurant").value.trim(),
+        criteria: document.getElementById("m-criteria").value.trim(),
         platform: document.getElementById("m-platform").value,
-        url: document.getElementById("m-url").value || null,
+        url: document.getElementById("m-url").value.trim() || null,
+        prepaid: isPrepaid ? 1 : 0,
+        auto_book: isPrepaid ? 0 : 1,
       };
-      if (!body.restaurant || !body.criteria) return alert("Please fill in required fields.");
-      await fetch("/api/monitors", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body) });
+      if (!body.restaurant || !body.criteria) return alert("Please fill in Restaurant and Criteria.");
+      const resp = await fetch("/api/monitors", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(body),
+      });
+      if (!resp.ok) return alert("Failed to save monitor.");
       closeModal("mon-modal");
+      ["m-restaurant","m-criteria","m-url"].forEach(id => {
+        document.getElementById(id).value = "";
+      });
+      document.getElementById("m-prepaid").checked = false;
       loadMonitors();
     }
 
     async function submitLog() {
       const body = {
-        restaurant: document.getElementById("l-restaurant").value,
-        result: document.getElementById("l-result").value,
+        restaurant: document.getElementById("l-restaurant").value.trim(),
+        result: document.getElementById("l-result").value.trim(),
       };
       if (!body.restaurant || !body.result) return alert("Please fill in required fields.");
-      await fetch("/api/log", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body) });
+      const resp = await fetch("/api/log", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(body),
+      });
+      if (!resp.ok) return alert("Failed to save log entry.");
       closeModal("log-modal");
+      ["l-restaurant","l-result"].forEach(id => {
+        document.getElementById(id).value = "";
+      });
       loadLog();
     }
 
