@@ -39,6 +39,8 @@ class MonitorIn(BaseModel):
     status: Optional[str] = "watching"
     prepaid: Optional[int] = 0
     auto_book: Optional[int] = 0
+    cc_required: Optional[str] = None
+    min_cost: Optional[str] = None
 
 
 class MonitorPatch(BaseModel):
@@ -46,6 +48,8 @@ class MonitorPatch(BaseModel):
     last_checked: Optional[str] = None
     criteria: Optional[str] = None
     auto_book: Optional[int] = None
+    cc_required: Optional[str] = None
+    min_cost: Optional[str] = None
 
 
 class LogEntryIn(BaseModel):
@@ -160,6 +164,10 @@ def update_monitor(monitor_id: int, body: MonitorPatch):
         updates["criteria"] = body.criteria
     if body.auto_book is not None:
         updates["auto_book"] = body.auto_book
+    if body.cc_required is not None:
+        updates["cc_required"] = body.cc_required
+    if body.min_cost is not None:
+        updates["min_cost"] = body.min_cost
 
     if updates:
         set_clause = ", ".join(f"{k} = ?" for k in updates)

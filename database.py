@@ -54,6 +54,8 @@ def init_db():
         ("auto_book", "INTEGER NOT NULL DEFAULT 0"),
         ("venue_id", "TEXT"),
         ("venue_slug", "TEXT"),
+        ("cc_required", "TEXT"),
+        ("min_cost", "TEXT"),
     ]:
         try:
             c.execute(f"ALTER TABLE monitors ADD COLUMN {col} {definition}")

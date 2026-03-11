@@ -483,13 +483,15 @@
               <th>Restaurant</th>
               <th>Criteria</th>
               <th>Platform</th>
+              <th>CC Required</th>
+              <th>Min Cost</th>
               <th>Status</th>
               <th>Last Checked</th>
               <th>Auto-Book</th>
             </tr>
           </thead>
           <tbody id="mon-tbody">
-            <tr><td colspan="6" class="text-gray-500 text-center py-8">Loading...</td></tr>
+            <tr><td colspan="8" class="text-gray-500 text-center py-8">Loading...</td></tr>
           </tbody>
         </table>
       </div>
@@ -710,6 +712,8 @@
           </td>
           <td class="text-gray-400 text-xs max-w-xs">${esc(m.criteria)}</td>
           <td><span class="badge-${m.platform.toLowerCase()} text-white text-xs font-semibold px-2 py-0.5 rounded-full">${esc(m.platform)}</span></td>
+          <td>${ccCell(m.cc_required)}</td>
+          <td class="text-gray-400 text-xs">${esc(m.min_cost || '—')}</td>
           <td><span class="status-${m.status.toLowerCase()} font-medium capitalize">${esc(m.status)}</span></td>
           <td class="text-gray-500 text-xs">${m.last_checked ? formatDateTime(m.last_checked) : '—'}</td>
           <td>${toggle}</td>
@@ -746,6 +750,7 @@
             </div>
             <span class="platform-pill plat-${platform}">${esc(m.platform)}</span>
           </div>
+          ${(m.cc_required || m.min_cost) ? `<div style="font-size:0.75rem;color:#8e8e93;margin-bottom:6px">${ccBadge(m.cc_required)}${m.min_cost ? ' · ' + esc(m.min_cost) : ''}</div>` : ''}
           <div class="mon-card-bottom">
             <div class="mon-card-meta">
               <span class="mon-status-label">${statusLabel}</span>
@@ -904,6 +909,20 @@
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────
+
+    function ccCell(val) {
+      if (!val) return '<span style="color:#6b7280">—</span>';
+      if (val === 'Prepaid')    return '<span style="color:#f87171;font-weight:600">Prepaid</span>';
+      if (val === 'Card hold')  return '<span style="color:#facc15;font-weight:600">Card hold</span>';
+      return '<span style="color:#6b7280">None</span>';
+    }
+
+    function ccBadge(val) {
+      if (!val) return '';
+      if (val === 'Prepaid')   return '🔴 Prepaid';
+      if (val === 'Card hold') return '🟡 Card hold';
+      return '⚪ None';
+    }
 
     function esc(str) {
       if (!str) return '';
