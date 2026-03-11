@@ -52,6 +52,8 @@ def init_db():
     for col, definition in [
         ("prepaid", "INTEGER NOT NULL DEFAULT 0"),
         ("auto_book", "INTEGER NOT NULL DEFAULT 0"),
+        ("venue_id", "TEXT"),
+        ("venue_slug", "TEXT"),
     ]:
         try:
             c.execute(f"ALTER TABLE monitors ADD COLUMN {col} {definition}")

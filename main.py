@@ -54,6 +54,22 @@ class LogEntryIn(BaseModel):
     timestamp: Optional[str] = None
 
 
+class CheckResultIn(BaseModel):
+    restaurant: str
+    status: str  # "available" | "unavailable" | "check_required" | "error"
+    slots: Optional[list] = []
+    checked_at: Optional[str] = None
+
+
+class BookedIn(BaseModel):
+    restaurant: str
+    date: str
+    time: str
+    party_size: int
+    confirmation_number: Optional[str] = None
+    booked_on: Optional[str] = None
+
+
 # ── Reservations ─────────────────────────────────────────────────────────────
 
 @app.get("/api/reservations")
@@ -180,3 +196,52 @@ def get_log():
     ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+# ── Monitor Runner ────────────────────────────────────────────────────────────
+
+@app.post("/api/monitors/run-check")
+def run_check(body: CheckResultIn):
+    """Receives check results posted by external monitoring scripts."""
+    now = datetime.utcnow().isoformat()
+    checked_at = body.checked_at or now
+
+    conn = get_db()
+    # Update matching monitor's last_checked and status
+    conn.execute(
+        "UPDATE monitors SET last_checked = ?, status = ? WHERE restaurant = ?",
+        (checked_at, body.status, body.restaurant),
+    )
+    # Log the result
+    slot_summary = ", ".join(str(s) for s in body.slots[:5]) if body.slots else "none"
+    log_result = f"status={body.status} slots=[{slot_summary}]"
+    conn.execute(
+        "INSERT INTO check_log (timestamp, restaurant, result) VALUES (?, ?, ?)",
+        (checked_at, body.restaurant, log_result),
+    )
+    conn.commit()
+    conn.close()
+    return {"ok": True, "restaurant": body.restaurant, "status": body.status}
+
+
+@app.post("/api/reservations/booked", status_code=201)
+def record_booked(body: BookedIn):
+    """Records a completed booking with optional confirmation number."""
+    now = datetime.utcnow().isoformat()
+    conn = get_db()
+    cur = conn.execute(
+        "INSERT INTO reservations (restaurant, date, time, party_size, confirmation_number, booked_on, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (
+            body.restaurant,
+            body.date,
+            body.time,
+            body.party_size,
+            body.confirmation_number,
+            body.booked_on or now[:10],
+            now,
+        ),
+    )
+    conn.commit()
+    row = conn.execute("SELECT * FROM reservations WHERE id = ?", (cur.lastrowid,)).fetchone()
+    conn.close()
+    return dict(row)
