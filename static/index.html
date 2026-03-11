@@ -2,7 +2,7 @@
 <html lang="en" class="dark">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Res Monitor</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -20,15 +20,23 @@
     }
   </script>
   <style>
-    body { background-color: #0f1117; }
-    .badge-opentable { background: #dc2626; }
-    .badge-tock      { background: #d97706; }
+    * { box-sizing: border-box; }
+    body {
+      background-color: #0f1117;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    /* ── Desktop badge / status colors ────────────────────────────────── */
+    .badge-opentable { background: #ea580c; }
+    .badge-tock      { background: #7c3aed; }
     .badge-resy      { background: #2563eb; }
     .badge-bento     { background: #7c3aed; }
     .badge-other     { background: #4b5563; }
     .status-confirmed { color: #4ade80; }
     .status-watching  { color: #facc15; }
     .status-failed    { color: #f87171; }
+
+    /* ── Desktop table ────────────────────────────────────────────────── */
     table { border-collapse: collapse; width: 100%; }
     th { text-align: left; padding: 10px 12px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #9ca3af; border-bottom: 1px solid #374151; }
     td { padding: 10px 12px; font-size: 0.875rem; color: #e5e7eb; border-bottom: 1px solid #1f2937; vertical-align: middle; }
@@ -38,7 +46,8 @@
     .section-header { padding: 16px 20px; border-bottom: 1px solid #374151; display: flex; align-items: center; gap: 10px; }
     .section-title { font-size: 1rem; font-weight: 600; color: #f9fafb; }
     .count-badge { background: #374151; color: #9ca3af; border-radius: 9999px; padding: 1px 8px; font-size: 0.75rem; }
-    /* Toggle switch */
+
+    /* ── Toggle switch (desktop) ──────────────────────────────────────── */
     .toggle-track {
       position: relative; display: inline-flex; align-items: center;
       width: 36px; height: 20px; border-radius: 9999px;
@@ -53,6 +62,326 @@
     }
     .toggle-track.on  .toggle-thumb { transform: translateX(19px); }
     .toggle-track.off .toggle-thumb { transform: translateX(3px); }
+
+    /* ── Mobile sticky header (hidden on desktop) ─────────────────────── */
+    #mobile-sticky-header { display: none; }
+
+    /* ── Mobile card containers (hidden on desktop) ───────────────────── */
+    .mobile-cards { display: none; }
+
+    /* ── Input fields ─────────────────────────────────────────────────── */
+    .input-field {
+      width: 100%;
+      background: #111827;
+      border: 1px solid #374151;
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: white;
+      font-size: 0.875rem;
+      outline: none;
+    }
+    .input-field:focus { border-color: #6366f1; }
+    .input-field::placeholder { color: #6b7280; }
+    select.input-field option { background: #1f2937; }
+
+    /* ══════════════════════════════════════════════════════════════════
+       MOBILE STYLES  (≤ 767px)
+    ══════════════════════════════════════════════════════════════════ */
+    @media (max-width: 767px) {
+
+      body {
+        background-color: #f2f2f7 !important;
+      }
+
+      /* ── Sticky header ──────────────────────────────────────────────── */
+      #mobile-sticky-header {
+        display: flex;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background: rgba(255,255,255,0.92);
+        -webkit-backdrop-filter: blur(12px);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid #e5e5ea;
+        padding: 12px 16px;
+        align-items: center;
+        justify-content: space-between;
+      }
+      #mobile-sticky-header h1 {
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: #1c1c1e;
+        margin: 0;
+      }
+      #mobile-sticky-header .mobile-header-right {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 1px;
+      }
+      #mobile-sticky-header .mobile-refresh-btn {
+        background: #007aff;
+        color: white;
+        border: none;
+        border-radius: 20px;
+        padding: 6px 14px;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        cursor: pointer;
+        min-height: 32px;
+      }
+      #mobile-sticky-header .mobile-last-updated {
+        font-size: 0.65rem;
+        color: #8e8e93;
+        text-align: right;
+      }
+
+      /* ── Hide desktop header ────────────────────────────────────────── */
+      #desktop-header { display: none !important; }
+
+      /* ── Dashboard padding ──────────────────────────────────────────── */
+      #dashboard {
+        padding: 0 0 32px 0 !important;
+        max-width: 100% !important;
+      }
+
+      /* ── Section cards ──────────────────────────────────────────────── */
+      .section-card {
+        background: transparent !important;
+        border-radius: 0 !important;
+        margin-bottom: 0 !important;
+        overflow: visible !important;
+      }
+      .section-header {
+        background: transparent !important;
+        border: none !important;
+        padding: 20px 16px 6px !important;
+      }
+      .section-title {
+        font-size: 1.0625rem !important;
+        font-weight: 700 !important;
+        color: #1c1c1e !important;
+      }
+      .count-badge {
+        background: #e5e5ea !important;
+        color: #6e6e73 !important;
+      }
+      .section-header button {
+        font-size: 0.875rem !important;
+        padding: 8px 14px !important;
+        min-height: 36px !important;
+        border-radius: 20px !important;
+      }
+
+      /* ── Hide desktop tables ────────────────────────────────────────── */
+      .desktop-table-wrap { display: none !important; }
+
+      /* ── Show mobile cards ──────────────────────────────────────────── */
+      .mobile-cards { display: block !important; padding: 4px 16px 8px; }
+
+      /* ── Mobile subsection headers ──────────────────────────────────── */
+      .mobile-sub-header {
+        font-size: 0.6875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #8e8e93;
+        padding: 10px 0 6px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .mobile-sub-count {
+        background: #e5e5ea;
+        color: #8e8e93;
+        border-radius: 9999px;
+        padding: 1px 7px;
+        font-size: 0.625rem;
+        font-weight: 600;
+      }
+
+      /* ── Monitor cards ──────────────────────────────────────────────── */
+      .mon-card {
+        background: white;
+        border-radius: 12px;
+        padding: 14px 14px 12px;
+        margin-bottom: 10px;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+      }
+      .mon-card-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 10px;
+        margin-bottom: 8px;
+      }
+      .mon-card-name {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #1c1c1e;
+        line-height: 1.3;
+      }
+      .mon-card-criteria {
+        font-size: 0.75rem;
+        color: #8e8e93;
+        margin-top: 2px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 200px;
+      }
+      .platform-pill {
+        font-size: 0.6875rem;
+        font-weight: 600;
+        color: white;
+        padding: 3px 10px;
+        border-radius: 9999px;
+        white-space: nowrap;
+        flex-shrink: 0;
+        align-self: flex-start;
+      }
+      .plat-resy      { background: #2563eb; }
+      .plat-opentable { background: #ea580c; }
+      .plat-tock      { background: #7c3aed; }
+      .plat-bento     { background: #7c3aed; }
+      .plat-other     { background: #6b7280; }
+
+      .mon-card-bottom {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-top: 1px solid #f2f2f7;
+        padding-top: 9px;
+        margin-top: 2px;
+      }
+      .mon-card-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .mon-status-label {
+        font-size: 0.8125rem;
+        font-weight: 500;
+        color: #3c3c43;
+      }
+      .mon-last-checked {
+        font-size: 0.6875rem;
+        color: #8e8e93;
+      }
+      .mon-toggle-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .toggle-label-text {
+        font-size: 0.75rem;
+        color: #8e8e93;
+        font-weight: 500;
+      }
+
+      /* ── iOS-size toggle on mobile ──────────────────────────────────── */
+      .toggle-track {
+        width: 51px !important;
+        height: 31px !important;
+        min-width: 51px !important;
+      }
+      .toggle-thumb {
+        width: 27px !important;
+        height: 27px !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.25) !important;
+      }
+      .toggle-track.on  .toggle-thumb { transform: translateX(22px) !important; }
+      .toggle-track.off .toggle-thumb { transform: translateX(2px) !important; }
+
+      /* Make entire toggle row a 44px tap target */
+      .mon-toggle-row {
+        padding: 6px 0;
+        min-height: 44px;
+      }
+
+      /* ── Reservation cards ──────────────────────────────────────────── */
+      .res-card {
+        background: white;
+        border-radius: 12px;
+        padding: 14px;
+        margin-bottom: 10px;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+      }
+      .res-card-name {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #1c1c1e;
+        margin-bottom: 6px;
+      }
+      .res-card-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.8125rem;
+        color: #3c3c43;
+        margin-bottom: 3px;
+      }
+      .res-card-label { color: #8e8e93; font-size: 0.75rem; }
+      .res-card-conf {
+        font-size: 0.75rem;
+        color: #8e8e93;
+        font-family: ui-monospace, monospace;
+        margin-top: 6px;
+        border-top: 1px solid #f2f2f7;
+        padding-top: 6px;
+      }
+
+      /* ── Log cards ──────────────────────────────────────────────────── */
+      .log-card {
+        background: white;
+        border-radius: 12px;
+        padding: 12px 14px;
+        margin-bottom: 8px;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+      }
+      .log-card-left {
+        font-size: 0.6875rem;
+        color: #8e8e93;
+        white-space: nowrap;
+        flex-shrink: 0;
+        font-family: ui-monospace, monospace;
+        padding-top: 1px;
+      }
+      .log-card-right {}
+      .log-card-restaurant {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #1c1c1e;
+        margin-bottom: 2px;
+      }
+      .log-card-result {
+        font-size: 0.8125rem;
+        color: #3c3c43;
+      }
+
+      /* ── Password gate mobile ────────────────────────────────────────── */
+      #gate > div {
+        border-radius: 20px !important;
+        padding: 32px 24px !important;
+        margin: 20px !important;
+        max-width: none !important;
+        width: calc(100% - 40px) !important;
+      }
+      #gate input[type="password"] {
+        font-size: 1rem !important;
+        padding: 14px 16px !important;
+        min-height: 50px !important;
+        border-radius: 12px !important;
+      }
+      #gate button {
+        font-size: 1rem !important;
+        padding: 14px !important;
+        min-height: 50px !important;
+        border-radius: 12px !important;
+      }
+    }
   </style>
 </head>
 <body class="min-h-screen text-gray-100">
@@ -81,8 +410,17 @@
   <!-- DASHBOARD -->
   <div id="dashboard" class="hidden max-w-6xl mx-auto px-4 py-8">
 
-    <!-- Header -->
-    <div class="mb-8 flex items-start justify-between flex-wrap gap-2">
+    <!-- Mobile sticky header -->
+    <div id="mobile-sticky-header">
+      <h1>🦞 Res Monitor</h1>
+      <div class="mobile-header-right">
+        <button class="mobile-refresh-btn" onclick="loadAll()">↻ Refresh</button>
+        <span class="mobile-last-updated">Updated: <span id="last-updated-mobile">—</span></span>
+      </div>
+    </div>
+
+    <!-- Desktop header -->
+    <div id="desktop-header" class="mb-8 flex items-start justify-between flex-wrap gap-2">
       <div>
         <h1 class="text-3xl font-bold text-white">🦞 Res Monitor</h1>
         <p class="text-gray-400 mt-1">Bay Area Bucket List</p>
@@ -101,7 +439,12 @@
         <span id="res-count" class="count-badge">0</span>
         <button onclick="showAddReservationModal()" class="ml-auto text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg transition">+ Add</button>
       </div>
-      <div class="overflow-x-auto">
+
+      <!-- Mobile cards -->
+      <div id="res-cards" class="mobile-cards"></div>
+
+      <!-- Desktop table -->
+      <div class="desktop-table-wrap overflow-x-auto">
         <table>
           <thead>
             <tr>
@@ -128,7 +471,12 @@
         <span id="mon-count" class="count-badge">0</span>
         <button onclick="showAddMonitorModal()" class="ml-auto text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg transition">+ Add</button>
       </div>
-      <div class="overflow-x-auto">
+
+      <!-- Mobile cards -->
+      <div id="mon-cards" class="mobile-cards"></div>
+
+      <!-- Desktop table -->
+      <div class="desktop-table-wrap overflow-x-auto">
         <table>
           <thead>
             <tr>
@@ -155,7 +503,12 @@
         <span class="text-gray-500 text-xs ml-1">(last 20)</span>
         <button onclick="showAddLogModal()" class="ml-auto text-xs bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded-lg transition">+ Log Entry</button>
       </div>
-      <div class="overflow-x-auto">
+
+      <!-- Mobile cards -->
+      <div id="log-cards" class="mobile-cards"></div>
+
+      <!-- Desktop table -->
+      <div class="desktop-table-wrap overflow-x-auto">
         <table>
           <thead>
             <tr>
@@ -234,23 +587,6 @@
     </div>
   </div>
 
-  <style>
-    .input-field {
-      width: 100%;
-      background: #111827;
-      border: 1px solid #374151;
-      border-radius: 8px;
-      padding: 10px 14px;
-      color: white;
-      font-size: 0.875rem;
-      outline: none;
-      box-sizing: border-box;
-    }
-    .input-field:focus { border-color: #6366f1; }
-    .input-field::placeholder { color: #6b7280; }
-    select.input-field option { background: #1f2937; }
-  </style>
-
   <script>
     const PASSWORD = "libbyl0bster";
     const SESSION_KEY = "res_monitor_auth";
@@ -280,44 +616,74 @@
       }
     }
 
-    // Check session on load
     if (sessionStorage.getItem(SESSION_KEY)) {
       showDashboard();
     }
 
-    // ── Data loading ──────────────────────────────────────────────────────────
+    // ── Data loading ───────────────────────────────────────────────────────────
 
     async function loadAll() {
       await Promise.all([loadReservations(), loadMonitors(), loadLog()]);
-      document.getElementById("last-updated").textContent = new Date().toLocaleTimeString();
+      const t = new Date().toLocaleTimeString();
+      document.getElementById("last-updated").textContent = t;
+      document.getElementById("last-updated-mobile").textContent = t;
     }
 
     async function loadReservations() {
       const res = await fetch("/api/reservations");
       const data = await res.json();
-      const tbody = document.getElementById("res-tbody");
       document.getElementById("res-count").textContent = data.length;
+
+      // Desktop table
+      const tbody = document.getElementById("res-tbody");
       if (data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" class="text-gray-500 text-center py-8">No confirmed reservations yet.</td></tr>';
-        return;
+      } else {
+        tbody.innerHTML = data.map(r => `
+          <tr>
+            <td class="font-medium text-white">${esc(r.restaurant)}</td>
+            <td>${formatDate(r.date)}</td>
+            <td>${esc(r.time)}</td>
+            <td>${r.party_size}</td>
+            <td class="font-mono text-gray-300">${esc(r.confirmation_number || '—')}</td>
+            <td class="text-gray-400">${formatDate(r.booked_on)}</td>
+          </tr>
+        `).join("");
       }
-      tbody.innerHTML = data.map(r => `
-        <tr>
-          <td class="font-medium text-white">${esc(r.restaurant)}</td>
-          <td>${formatDate(r.date)}</td>
-          <td>${esc(r.time)}</td>
-          <td>${r.party_size}</td>
-          <td class="font-mono text-gray-300">${esc(r.confirmation_number || '—')}</td>
-          <td class="text-gray-400">${formatDate(r.booked_on)}</td>
-        </tr>
-      `).join("");
+
+      // Mobile cards
+      const cards = document.getElementById("res-cards");
+      if (data.length === 0) {
+        cards.innerHTML = '<p style="color:#8e8e93;text-align:center;padding:20px 0">No confirmed reservations yet.</p>';
+      } else {
+        cards.innerHTML = data.map(r => `
+          <div class="res-card">
+            <div class="res-card-name">${esc(r.restaurant)}</div>
+            <div class="res-card-row">
+              <span class="res-card-label">Date</span>
+              <span>${formatDate(r.date)}</span>
+            </div>
+            <div class="res-card-row">
+              <span class="res-card-label">Time</span>
+              <span>${esc(r.time)}</span>
+            </div>
+            <div class="res-card-row">
+              <span class="res-card-label">Party</span>
+              <span>${r.party_size}</span>
+            </div>
+            ${r.confirmation_number ? `<div class="res-card-conf">Conf # ${esc(r.confirmation_number)}</div>` : ''}
+          </div>
+        `).join("");
+      }
     }
 
     async function loadMonitors() {
       const res = await fetch("/api/monitors");
       const data = await res.json();
-      const tbody = document.getElementById("mon-tbody");
       document.getElementById("mon-count").textContent = data.length;
+
+      // Desktop table
+      const tbody = document.getElementById("mon-tbody");
       tbody.innerHTML = data.map(m => {
         const isPrepaid = m.prepaid === 1 || m.prepaid === true;
         const isAutoBook = m.auto_book === 1 || m.auto_book === true;
@@ -349,26 +715,100 @@
           <td>${toggle}</td>
         </tr>`;
       }).join("");
+
+      // Mobile cards
+      renderMonitorCards(data);
+    }
+
+    function renderMonitorCards(data) {
+      const container = document.getElementById("mon-cards");
+      if (!data.length) {
+        container.innerHTML = '<p style="color:#8e8e93;text-align:center;padding:20px 0">No monitors yet.</p>';
+        return;
+      }
+
+      const active  = data.filter(m => !(m.prepaid === 1 || m.prepaid === true));
+      const prepaid = data.filter(m =>  (m.prepaid === 1 || m.prepaid === true));
+
+      function cardHtml(m) {
+        const isPrepaid  = m.prepaid === 1 || m.prepaid === true;
+        const isAutoBook = m.auto_book === 1 || m.auto_book === true;
+        const platform   = m.platform.toLowerCase();
+        const toggleCls  = isAutoBook ? 'on' : 'off';
+        const statusLabel = isPrepaid
+          ? '⚠️ prepaid'
+          : (m.status === 'available' ? '🔴 available' : '🟢 watching');
+        return `<div class="mon-card">
+          <div class="mon-card-top">
+            <div style="min-width:0">
+              <div class="mon-card-name">${esc(m.restaurant)}</div>
+              <div class="mon-card-criteria">${esc(m.criteria)}</div>
+            </div>
+            <span class="platform-pill plat-${platform}">${esc(m.platform)}</span>
+          </div>
+          <div class="mon-card-bottom">
+            <div class="mon-card-meta">
+              <span class="mon-status-label">${statusLabel}</span>
+              <span class="mon-last-checked">${m.last_checked ? formatDateTime(m.last_checked) : 'Never checked'}</span>
+            </div>
+            <div class="mon-toggle-row">
+              <span class="toggle-label-text">Auto</span>
+              <button class="toggle-track ${toggleCls}" onclick="toggleAutoBook(event,${m.id},${isAutoBook ? 1 : 0},${isPrepaid ? 1 : 0})" title="${isAutoBook ? 'Auto-book ON' : 'Auto-book OFF'}">
+                <div class="toggle-thumb"></div>
+              </button>
+            </div>
+          </div>
+        </div>`;
+      }
+
+      let html = '';
+      if (active.length) {
+        html += `<div class="mobile-sub-header">Active Monitoring <span class="mobile-sub-count">${active.length}</span></div>`;
+        html += active.map(cardHtml).join('');
+      }
+      if (prepaid.length) {
+        html += `<div class="mobile-sub-header">Prepaid Watchlist <span class="mobile-sub-count">${prepaid.length}</span></div>`;
+        html += prepaid.map(cardHtml).join('');
+      }
+      container.innerHTML = html;
     }
 
     async function loadLog() {
       const res = await fetch("/api/log");
       const data = await res.json();
+
+      // Desktop table
       const tbody = document.getElementById("log-tbody");
       if (data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="3" class="text-gray-500 text-center py-8">No log entries yet.</td></tr>';
-        return;
+      } else {
+        tbody.innerHTML = data.map(l => `
+          <tr>
+            <td class="text-gray-500 text-xs font-mono whitespace-nowrap">${formatDateTime(l.timestamp)}</td>
+            <td class="font-medium">${esc(l.restaurant)}</td>
+            <td class="text-gray-300">${esc(l.result)}</td>
+          </tr>
+        `).join("");
       }
-      tbody.innerHTML = data.map(l => `
-        <tr>
-          <td class="text-gray-500 text-xs font-mono whitespace-nowrap">${formatDateTime(l.timestamp)}</td>
-          <td class="font-medium">${esc(l.restaurant)}</td>
-          <td class="text-gray-300">${esc(l.result)}</td>
-        </tr>
-      `).join("");
+
+      // Mobile cards
+      const cards = document.getElementById("log-cards");
+      if (data.length === 0) {
+        cards.innerHTML = '<p style="color:#8e8e93;text-align:center;padding:20px 0">No log entries yet.</p>';
+      } else {
+        cards.innerHTML = data.map(l => `
+          <div class="log-card">
+            <div class="log-card-left">${formatDateTime(l.timestamp)}</div>
+            <div class="log-card-right">
+              <div class="log-card-restaurant">${esc(l.restaurant)}</div>
+              <div class="log-card-result">${esc(l.result)}</div>
+            </div>
+          </div>
+        `).join("");
+      }
     }
 
-    // ── Auto-book toggle ──────────────────────────────────────────────────────
+    // ── Auto-book toggle ───────────────────────────────────────────────────────
 
     async function toggleAutoBook(e, id, currentVal, isPrepaid) {
       e.stopPropagation();
@@ -381,14 +821,13 @@
       loadMonitors();
     }
 
-    // ── Modals ────────────────────────────────────────────────────────────────
+    // ── Modals ─────────────────────────────────────────────────────────────────
 
     function showAddReservationModal() { document.getElementById("res-modal").classList.remove("hidden"); }
     function showAddMonitorModal()     { document.getElementById("mon-modal").classList.remove("hidden"); }
     function showAddLogModal()         { document.getElementById("log-modal").classList.remove("hidden"); }
     function closeModal(id)            { document.getElementById(id).classList.add("hidden"); }
 
-    // Close modals on backdrop click
     ["res-modal", "mon-modal", "log-modal"].forEach(id => {
       document.getElementById(id).addEventListener("click", function(e) {
         if (e.target === this) closeModal(id);
@@ -464,7 +903,7 @@
       loadLog();
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // ── Helpers ────────────────────────────────────────────────────────────────
 
     function esc(str) {
       if (!str) return '';
@@ -473,7 +912,6 @@
 
     function formatDate(str) {
       if (!str) return '—';
-      // Parse YYYY-MM-DD without timezone shift
       const [y, m, d] = str.split('T')[0].split('-');
       if (!y || !m || !d) return str;
       const date = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
