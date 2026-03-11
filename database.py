@@ -56,12 +56,58 @@ def init_db():
         ("venue_slug", "TEXT"),
         ("cc_required", "TEXT"),
         ("min_cost", "TEXT"),
+        ("booking_notes", "TEXT"),
     ]:
         try:
             c.execute(f"ALTER TABLE monitors ADD COLUMN {col} {definition}")
             conn.commit()
         except Exception:
             pass
+
+    # Update criteria for all monitors to party of 4, 5–7:30pm window
+    c.execute(
+        "UPDATE monitors SET criteria = ? WHERE restaurant != ?",
+        ("Party: 4 | Sat/Sun 5:00pm–7:30pm", "House of Prime Rib"),
+    )
+    c.execute(
+        "UPDATE monitors SET criteria = ? WHERE restaurant = ?",
+        ("Party: 4 | Sat/Sun 5:00pm–7:30pm | April 1+ only", "House of Prime Rib"),
+    )
+
+    # Seed booking_notes (only where not already set)
+    booking_notes_seed = [
+        ("House of Prime Rib", "Releases ~1yr out; midnight PT daily"),
+        ("Benu", "Releases 10am daily, 30 days out"),
+        ("Atelier Crenn", "Releases monthly"),
+        ("Lazy Bear", "Releases 1st of month, 2 months out"),
+        ("Noodle in a Haystack", "Releases monthly via Tock"),
+        ("Saison", "Releases monthly"),
+        ("Single Thread", "Releases monthly"),
+        ("Californios", "Releases monthly via Tock"),
+        ("Quince", "Releases monthly"),
+        ("Gary Danko", "Releases daily, 1 month out"),
+        ("Birdsong", "Releases via Tock"),
+        ("State Bird Provisions", "Releases daily via Resy"),
+        ("Rich Table", "Releases daily via Resy"),
+        ("Commis", "Releases daily via OpenTable"),
+        ("Chez Panisse", "Phone only: (510) 548-5525"),
+        ("Acquerello", "Releases daily via OpenTable"),
+        ("Nopa", "Releases daily via OpenTable"),
+        ("Zuni Café", "Releases daily via OpenTable"),
+        ("Sun Moon Studio", "Releases via Tock; 4 tables only"),
+        ("Kokkari Estiatorio", "Releases daily via OpenTable"),
+        ("Al's Place", "Releases daily via Resy"),
+        ("Mister Jiu's", "Releases daily via Resy"),
+        ("Nightbird", "Releases daily via Resy"),
+        ("Sorrel", "Releases daily via Resy"),
+    ]
+    for restaurant, notes in booking_notes_seed:
+        c.execute(
+            "UPDATE monitors SET booking_notes = ? WHERE restaurant = ? AND (booking_notes IS NULL OR booking_notes = '')",
+            (notes, restaurant),
+        )
+
+    conn.commit()
 
     # Seed monitors if empty
     c.execute("SELECT COUNT(*) FROM monitors")
@@ -228,5 +274,4 @@ def init_db():
             [(r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], now) for r in seed_monitors],
         )
 
-    conn.commit()
     conn.close()

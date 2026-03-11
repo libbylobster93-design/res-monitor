@@ -41,6 +41,7 @@ class MonitorIn(BaseModel):
     auto_book: Optional[int] = 0
     cc_required: Optional[str] = None
     min_cost: Optional[str] = None
+    booking_notes: Optional[str] = None
 
 
 class MonitorPatch(BaseModel):
@@ -50,6 +51,7 @@ class MonitorPatch(BaseModel):
     auto_book: Optional[int] = None
     cc_required: Optional[str] = None
     min_cost: Optional[str] = None
+    booking_notes: Optional[str] = None
 
 
 class LogEntryIn(BaseModel):
@@ -168,6 +170,8 @@ def update_monitor(monitor_id: int, body: MonitorPatch):
         updates["cc_required"] = body.cc_required
     if body.min_cost is not None:
         updates["min_cost"] = body.min_cost
+    if body.booking_notes is not None:
+        updates["booking_notes"] = body.booking_notes
 
     if updates:
         set_clause = ", ".join(f"{k} = ?" for k in updates)

@@ -481,12 +481,12 @@
           <thead>
             <tr>
               <th>Restaurant</th>
-              <th>Criteria</th>
+              <th>Status</th>
               <th>Platform</th>
+              <th>Pre-booking</th>
               <th>CC Required</th>
               <th>Min Cost</th>
-              <th>Status</th>
-              <th>Last Checked</th>
+              <th>Criteria</th>
               <th>Auto-Book</th>
             </tr>
           </thead>
@@ -710,12 +710,12 @@
             </div>
             ${m.url ? `<a href="${esc(m.url)}" target="_blank" class="text-indigo-400 hover:text-indigo-300 text-xs" style="margin-left:1.1rem">${esc(m.url)}</a>` : ''}
           </td>
-          <td class="text-gray-400 text-xs max-w-xs">${esc(m.criteria)}</td>
+          <td><span class="status-${m.status.toLowerCase()} font-medium capitalize">${esc(m.status)}</span><div class="text-gray-500 text-xs">${m.last_checked ? formatDateTime(m.last_checked) : '—'}</div></td>
           <td><span class="badge-${m.platform.toLowerCase()} text-white text-xs font-semibold px-2 py-0.5 rounded-full">${esc(m.platform)}</span></td>
+          <td class="text-gray-400 text-xs max-w-xs">${esc(m.booking_notes || '—')}</td>
           <td>${ccCell(m.cc_required)}</td>
           <td class="text-gray-400 text-xs">${esc(m.min_cost || '—')}</td>
-          <td><span class="status-${m.status.toLowerCase()} font-medium capitalize">${esc(m.status)}</span></td>
-          <td class="text-gray-500 text-xs">${m.last_checked ? formatDateTime(m.last_checked) : '—'}</td>
+          <td class="text-gray-400 text-xs max-w-xs">${esc(m.criteria)}</td>
           <td>${toggle}</td>
         </tr>`;
       }).join("");
@@ -750,6 +750,7 @@
             </div>
             <span class="platform-pill plat-${platform}">${esc(m.platform)}</span>
           </div>
+          ${m.booking_notes ? `<div style="font-size:0.75rem;color:#6e6e73;margin-bottom:4px">📅 ${esc(m.booking_notes)}</div>` : ''}
           ${(m.cc_required || m.min_cost) ? `<div style="font-size:0.75rem;color:#8e8e93;margin-bottom:6px">${ccBadge(m.cc_required)}${m.min_cost ? ' · ' + esc(m.min_cost) : ''}</div>` : ''}
           <div class="mon-card-bottom">
             <div class="mon-card-meta">
