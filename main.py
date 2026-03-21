@@ -272,8 +272,18 @@ async def health():
 @app.post("/api/monitors/trigger-check")
 async def trigger_check(background_tasks: BackgroundTasks):
     """Trigger the daily availability check in background."""
+    import asyncio, concurrent.futures
     from monitors.scheduler import run_daily_check
-    background_tasks.add_task(run_daily_check)
+
+    def _run_in_thread():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            return run_daily_check()
+        finally:
+            loop.close()
+
+    background_tasks.add_task(_run_in_thread)
     return {"status": "check triggered"}
 
 
