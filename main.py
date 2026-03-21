@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -257,3 +257,47 @@ def record_booked(body: BookedIn):
     row = conn.execute("SELECT * FROM reservations WHERE id = ?", (cur.lastrowid,)).fetchone()
     conn.close()
     return dict(row)
+
+
+# ── Health Check ─────────────────────────────────────────────────────────────
+
+@app.get("/api/health")
+async def health():
+    """Health check endpoint."""
+    return {"status": "ok"}
+
+
+# ── Daily Check Trigger ──────────────────────────────────────────────────────
+
+@app.post("/api/monitors/trigger-check")
+async def trigger_check(background_tasks: BackgroundTasks):
+    """Trigger the daily availability check in background."""
+    from monitors.scheduler import run_daily_check
+    background_tasks.add_task(run_daily_check)
+    return {"status": "check triggered"}
+
+
+# ── Check Logs ───────────────────────────────────────────────────────────────
+
+@app.get("/api/check-logs")
+def get_check_logs():
+    """Get recent check run logs."""
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT * FROM check_logs ORDER BY run_at DESC LIMIT 10"
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+# ── Booking Attempts ─────────────────────────────────────────────────────────
+
+@app.get("/api/booking-attempts")
+def get_booking_attempts():
+    """Get recent booking attempts."""
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT * FROM booking_attempts ORDER BY created_at DESC LIMIT 20"
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]

@@ -46,6 +46,31 @@ def init_db():
             restaurant TEXT NOT NULL,
             result TEXT NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS booking_attempts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            monitor_id INTEGER,
+            restaurant_name TEXT,
+            platform TEXT,
+            slot_date TEXT,
+            slot_time TEXT,
+            party_size INTEGER,
+            status TEXT,
+            confirmation_code TEXT,
+            requires_cc BOOLEAN,
+            notified BOOLEAN DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS check_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            run_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            restaurants_checked INTEGER,
+            slots_found INTEGER,
+            bookings_made INTEGER,
+            alerts_sent INTEGER,
+            errors TEXT
+        );
     """)
 
     # Migration: add new columns to existing monitors table if missing

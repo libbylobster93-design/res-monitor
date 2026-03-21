@@ -526,6 +526,70 @@
       </div>
     </div>
 
+    <!-- Recent Checks -->
+    <div class="section-card">
+      <div class="section-header">
+        <span class="text-purple-400 text-lg">⟳</span>
+        <span class="section-title">Recent Checks</span>
+        <span class="text-gray-500 text-xs ml-1">(last 10 runs)</span>
+        <button onclick="triggerCheck()" class="ml-auto text-xs bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded-lg transition">▶ Run Check</button>
+      </div>
+
+      <!-- Mobile cards -->
+      <div id="checks-cards" class="mobile-cards"></div>
+
+      <!-- Desktop table -->
+      <div class="desktop-table-wrap overflow-x-auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Run At</th>
+              <th>Restaurants</th>
+              <th>Slots Found</th>
+              <th>Bookings</th>
+              <th>Alerts</th>
+              <th>Errors</th>
+            </tr>
+          </thead>
+          <tbody id="checks-tbody">
+            <tr><td colspan="6" class="text-gray-500 text-center py-8">No check runs yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Booking Attempts -->
+    <div class="section-card">
+      <div class="section-header">
+        <span class="text-orange-400 text-lg">📋</span>
+        <span class="section-title">Booking Attempts</span>
+        <span class="text-gray-500 text-xs ml-1">(last 20)</span>
+      </div>
+
+      <!-- Mobile cards -->
+      <div id="bookings-cards" class="mobile-cards"></div>
+
+      <!-- Desktop table -->
+      <div class="desktop-table-wrap overflow-x-auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Restaurant</th>
+              <th>Platform</th>
+              <th>Date/Time</th>
+              <th>Party</th>
+              <th>Status</th>
+              <th>Confirmation</th>
+            </tr>
+          </thead>
+          <tbody id="bookings-tbody">
+            <tr><td colspan="7" class="text-gray-500 text-center py-8">No booking attempts yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
   </div>
 
   <!-- ADD RESERVATION MODAL -->
@@ -625,7 +689,7 @@
     // ── Data loading ───────────────────────────────────────────────────────────
 
     async function loadAll() {
-      await Promise.all([loadReservations(), loadMonitors(), loadLog()]);
+      await Promise.all([loadReservations(), loadMonitors(), loadLog(), loadCheckLogs(), loadBookingAttempts()]);
       const t = new Date().toLocaleTimeString();
       document.getElementById("last-updated").textContent = t;
       document.getElementById("last-updated-mobile").textContent = t;
@@ -811,6 +875,139 @@
             </div>
           </div>
         `).join("");
+      }
+    }
+
+    async function loadCheckLogs() {
+      try {
+        const res = await fetch("/api/check-logs");
+        const data = await res.json();
+
+        // Desktop table
+        const tbody = document.getElementById("checks-tbody");
+        if (data.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" class="text-gray-500 text-center py-8">No check runs yet.</td></tr>';
+        } else {
+          tbody.innerHTML = data.map(c => `
+            <tr>
+              <td class="text-gray-500 text-xs font-mono whitespace-nowrap">${formatDateTime(c.run_at)}</td>
+              <td>${c.restaurants_checked || 0}</td>
+              <td>${c.slots_found || 0}</td>
+              <td class="${c.bookings_made > 0 ? 'text-green-400 font-semibold' : ''}">${c.bookings_made || 0}</td>
+              <td class="${c.alerts_sent > 0 ? 'text-yellow-400' : ''}">${c.alerts_sent || 0}</td>
+              <td class="text-red-400 text-xs max-w-xs truncate">${esc(c.errors || '—')}</td>
+            </tr>
+          `).join("");
+        }
+
+        // Mobile cards
+        const cards = document.getElementById("checks-cards");
+        if (data.length === 0) {
+          cards.innerHTML = '<p style="color:#8e8e93;text-align:center;padding:20px 0">No check runs yet.</p>';
+        } else {
+          cards.innerHTML = data.map(c => `
+            <div class="log-card">
+              <div class="log-card-left">${formatDateTime(c.run_at)}</div>
+              <div class="log-card-right">
+                <div class="log-card-restaurant">Checked ${c.restaurants_checked || 0} restaurants</div>
+                <div class="log-card-result">
+                  Found: ${c.slots_found || 0} | Booked: ${c.bookings_made || 0} | Alerts: ${c.alerts_sent || 0}
+                  ${c.errors ? `<br><span style="color:#f87171">${esc(c.errors)}</span>` : ''}
+                </div>
+              </div>
+            </div>
+          `).join("");
+        }
+      } catch (e) {
+        console.error("Failed to load check logs:", e);
+      }
+    }
+
+    async function loadBookingAttempts() {
+      try {
+        const res = await fetch("/api/booking-attempts");
+        const data = await res.json();
+
+        // Desktop table
+        const tbody = document.getElementById("bookings-tbody");
+        if (data.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" class="text-gray-500 text-center py-8">No booking attempts yet.</td></tr>';
+        } else {
+          tbody.innerHTML = data.map(b => {
+            const statusBadge = getStatusBadge(b.status);
+            return `
+              <tr>
+                <td class="text-gray-500 text-xs font-mono whitespace-nowrap">${formatDateTime(b.created_at)}</td>
+                <td class="font-medium text-white">${esc(b.restaurant_name)}</td>
+                <td><span class="badge-${(b.platform || '').toLowerCase()} text-white text-xs font-semibold px-2 py-0.5 rounded-full">${esc(b.platform)}</span></td>
+                <td>${formatDate(b.slot_date)} ${esc(b.slot_time || '')}</td>
+                <td>${b.party_size || '—'}</td>
+                <td>${statusBadge}</td>
+                <td class="font-mono text-gray-300 text-xs">${esc(b.confirmation_code || '—')}</td>
+              </tr>
+            `;
+          }).join("");
+        }
+
+        // Mobile cards
+        const cards = document.getElementById("bookings-cards");
+        if (data.length === 0) {
+          cards.innerHTML = '<p style="color:#8e8e93;text-align:center;padding:20px 0">No booking attempts yet.</p>';
+        } else {
+          cards.innerHTML = data.map(b => {
+            const statusBadge = getStatusBadge(b.status);
+            return `
+              <div class="res-card">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+                  <div class="res-card-name">${esc(b.restaurant_name)}</div>
+                  ${statusBadge}
+                </div>
+                <div class="res-card-row">
+                  <span class="res-card-label">Date/Time</span>
+                  <span>${formatDate(b.slot_date)} ${esc(b.slot_time || '')}</span>
+                </div>
+                <div class="res-card-row">
+                  <span class="res-card-label">Party</span>
+                  <span>${b.party_size || '—'}</span>
+                </div>
+                <div class="res-card-row">
+                  <span class="res-card-label">Platform</span>
+                  <span>${esc(b.platform)}</span>
+                </div>
+                ${b.confirmation_code ? `<div class="res-card-conf">Conf # ${esc(b.confirmation_code)}</div>` : ''}
+              </div>
+            `;
+          }).join("");
+        }
+      } catch (e) {
+        console.error("Failed to load booking attempts:", e);
+      }
+    }
+
+    function getStatusBadge(status) {
+      const styles = {
+        booked: 'background:#22c55e;color:white',
+        cc_required: 'background:#f97316;color:white',
+        failed: 'background:#ef4444;color:white',
+        found: 'background:#3b82f6;color:white',
+      };
+      const style = styles[status] || 'background:#6b7280;color:white';
+      const label = status === 'cc_required' ? 'CC Required' : (status || 'unknown');
+      return `<span style="${style};font-size:0.75rem;font-weight:600;padding:2px 8px;border-radius:9999px;text-transform:capitalize">${label}</span>`;
+    }
+
+    async function triggerCheck() {
+      if (!confirm("Run availability check for all monitored restaurants?")) return;
+      try {
+        const res = await fetch("/api/monitors/trigger-check", { method: "POST" });
+        if (res.ok) {
+          alert("Check triggered! Results will appear in Recent Checks shortly.");
+          setTimeout(loadAll, 5000);
+        } else {
+          alert("Failed to trigger check.");
+        }
+      } catch (e) {
+        alert("Error triggering check: " + e.message);
       }
     }
 
