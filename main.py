@@ -184,6 +184,18 @@ def update_monitor(monitor_id: int, body: MonitorPatch):
     return dict(row)
 
 
+@app.delete("/api/monitors/{monitor_id}", status_code=204)
+def delete_monitor(monitor_id: int):
+    conn = get_db()
+    row = conn.execute("SELECT id FROM monitors WHERE id = ?", (monitor_id,)).fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Monitor not found")
+    conn.execute("DELETE FROM monitors WHERE id = ?", (monitor_id,))
+    conn.commit()
+    conn.close()
+
+
 # ── Check Log ────────────────────────────────────────────────────────────────
 
 @app.post("/api/log", status_code=201)
