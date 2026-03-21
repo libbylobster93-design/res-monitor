@@ -20,43 +20,18 @@ BASE_HEADERS = {
 }
 
 
-def _get_password() -> Optional[str]:
-    """Get Resy password from environment variable."""
-    return os.environ.get("RESY_PASSWORD")
-
-
 def auth() -> Optional[str]:
     """
-    Authenticate with Resy and return auth token.
-    POST https://api.resy.com/3/auth/password
+    Return Resy auth token from environment variable.
+    Token is extracted from browser session (RESY_AUTH_TOKEN env var).
+    Resy uses phone/magic-link auth — no password-based login.
     """
-    password = _get_password()
-    if not password:
-        print("[Resy] RESY_PASSWORD env var not set")
-        return None
-
-    try:
-        resp = httpx.post(
-            "https://api.resy.com/3/auth/password",
-            headers=BASE_HEADERS,
-            data={
-                "email": RESY_EMAIL,
-                "password": password,
-            },
-            timeout=15,
-        )
-        if resp.status_code == 200:
-            data = resp.json()
-            token = data.get("token")
-            if token:
-                print("[Resy] Authentication successful")
-                return token
-            else:
-                print(f"[Resy] Auth response missing token: {data}")
-        else:
-            print(f"[Resy] Auth failed with status {resp.status_code}: {resp.text[:200]}")
-    except Exception as e:
-        print(f"[Resy] Auth request failed: {e}")
+    token = os.environ.get("RESY_AUTH_TOKEN")
+    if token:
+        print("[Resy] Using RESY_AUTH_TOKEN from environment")
+        return token
+    print("[Resy] RESY_AUTH_TOKEN env var not set")
+    return None
 
     return None
 
@@ -74,6 +49,11 @@ def find_slots(
     Returns list of slot dicts with config_id, time, etc.
     """
     try:
+        token = os.environ.get("RESY_AUTH_TOKEN", "")
+        headers = {**BASE_HEADERS}
+        if token:
+            headers["x-resy-auth-token"] = token
+            headers["x-resy-universal-auth"] = token
         resp = httpx.get(
             "https://api.resy.com/4/find",
             params={
@@ -83,7 +63,7 @@ def find_slots(
                 "party_size": party_size,
                 "venue_id": venue_id,
             },
-            headers=BASE_HEADERS,
+            headers=headers,
             timeout=15,
         )
         if resp.status_code != 200:
