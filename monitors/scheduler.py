@@ -8,8 +8,6 @@ from typing import List, Optional
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from monitors.resy_monitor import run_resy_monitors
-from monitors.opentable_monitor import run_opentable_monitors
-from monitors.tock_monitor import run_tock_monitors
 from database import get_db
 
 
@@ -40,39 +38,37 @@ def run_daily_check() -> dict:
     """
     Daily availability check for all monitored restaurants.
 
-    - Checks next 4 Fridays/Saturdays
-    - Time window: 5:30pm-9:00pm Pacific
-    - Party size: try 4 first, fallback to 2
-    - Auto-book if no CC required, otherwise Telegram alert
+    Strategy:
+      - Resy: full API check, auto-book if no CC required
+      - OpenTable/Tock: Cloudflare-blocked — send weekly batch Telegram with booking links
+      - Other/Bento: skip
 
-    Returns:
-        Dict with check results summary
+    Checks next 4 Fridays/Saturdays, 5:30pm–9:00pm PT, party of 4 → 2.
     """
-    from services.resy_booking import check_and_book as resy_check_and_book
-    from services.playwright_booking import check_and_book_opentable, check_and_notify_tock
     from services.notifications import send_telegram
+    import os
 
     print(f"\n{'='*60}")
     print(f"[Daily Check] Starting at {datetime.now().isoformat()}")
     print(f"{'='*60}\n")
 
-    # Get next 4 Fri/Sat dates
     dates = _get_next_fri_sat(4)
     print(f"[Daily Check] Checking dates: {dates}")
 
-    # Time window
     time_start = "17:30"
     time_end = "21:00"
     party_sizes = [4, 2]
 
-    # Stats
     restaurants_checked = 0
     slots_found = 0
     bookings_made = 0
     alerts_sent = 0
     errors = []
 
-    # Get all active monitors
+    # Collect manual-check restaurants (OpenTable/Tock)
+    manual_opentable = []
+    manual_tock = []
+
     conn = get_db()
     monitors = conn.execute(
         "SELECT * FROM monitors WHERE status = 'watching'"
@@ -85,75 +81,32 @@ def run_daily_check() -> dict:
         monitor = dict(monitor)
         name = monitor["restaurant"]
         platform = monitor.get("platform", "").lower()
-        auto_book = monitor.get("auto_book", 0)
-        prepaid = monitor.get("prepaid", 0)
+        url = monitor.get("url", "")
 
         print(f"[Daily Check] --- {name} ({platform}) ---")
         restaurants_checked += 1
 
         try:
             if platform == "resy":
-                if auto_book and not prepaid:
-                    result = resy_check_and_book(monitor, dates, party_sizes, time_start, time_end)
-                else:
-                    # Just check, don't book (prepaid or auto_book disabled)
-                    from monitors.resy_monitor import check_availability, get_venue_id
-                    venue_id = monitor.get("venue_id")
-                    if venue_id:
-                        try:
-                            venue_id = int(venue_id)
-                        except ValueError:
-                            venue_id = None
-                    if venue_id:
-                        slots = check_availability(venue_id, party_sizes[0], dates)
-                        if slots:
-                            slots_found += len(slots)
-                            slot = slots[0]
-                            send_telegram(f"🍽️ {name} available: {slot['date']} {slot['time']}")
-                            alerts_sent += 1
-                    result = {"status": "checked", "slots_found": slots if venue_id else []}
+                from services.resy_booking import check_and_book as resy_check_and_book
+                result = resy_check_and_book(monitor, dates, party_sizes, time_start, time_end)
 
                 if result.get("slots_found"):
                     slots_found += len(result["slots_found"])
                 if result.get("status") == "booked":
                     bookings_made += 1
                     alerts_sent += 1
-                elif result.get("status") == "cc_required":
+                elif result.get("status") in ("cc_required", "available"):
                     alerts_sent += 1
 
             elif platform == "opentable":
-                if auto_book and not prepaid:
-                    result = check_and_book_opentable(monitor, dates, party_sizes, time_start, time_end)
-                else:
-                    from services.playwright_booking import check_opentable
-                    url = monitor.get("url")
-                    if url:
-                        slots = check_opentable(url, dates, party_sizes, time_start, time_end)
-                        if slots:
-                            slots_found += len(slots)
-                            slot = slots[0]
-                            send_telegram(f"🍽️ {name} available: {slot['date']} {slot['time']}")
-                            alerts_sent += 1
-                    result = {"status": "checked", "slots_found": slots if url else []}
-
-                if result.get("slots_found"):
-                    slots_found += len(result["slots_found"])
-                if result.get("status") == "booked":
-                    bookings_made += 1
-                    alerts_sent += 1
-                elif result.get("status") == "cc_required":
-                    alerts_sent += 1
+                manual_opentable.append((name, url))
 
             elif platform == "tock":
-                # Tock is always prepaid - just check and notify
-                result = check_and_notify_tock(monitor, dates, party_sizes, time_start, time_end)
-                if result.get("slots_found"):
-                    slots_found += len(result["slots_found"])
-                if result.get("status") == "cc_required":
-                    alerts_sent += 1
+                manual_tock.append((name, url))
 
             else:
-                print(f"[Daily Check] Unknown platform: {platform}")
+                print(f"[Daily Check] Skipping unsupported platform: {platform}")
 
         except Exception as e:
             error_msg = f"{name}: {str(e)}"
@@ -169,6 +122,23 @@ def run_daily_check() -> dict:
             conn.close()
         except Exception:
             pass
+
+    # Send weekly manual-check digest (OpenTable + Tock) — only on Fridays
+    today_weekday = date.today().weekday()
+    if today_weekday == 4 and (manual_opentable or manual_tock):  # Friday only
+        lines = ["📋 *Weekly manual-check reminder* — these restaurants need human eyes:\n"]
+        if manual_opentable:
+            lines.append("*OpenTable* (Cloudflare-blocked):")
+            for name, url in manual_opentable:
+                lines.append(f"  • [{name}]({url})")
+        if manual_tock:
+            lines.append("\n*Tock* (prepaid — book manually):")
+            for name, url in manual_tock:
+                lines.append(f"  • [{name}]({url})")
+        lines.append(f"\nChecking: {', '.join(dates)}")
+        send_telegram("\n".join(lines))
+        alerts_sent += 1
+        print(f"[Daily Check] Sent weekly manual-check digest ({len(manual_opentable)} OT, {len(manual_tock)} Tock)")
 
     # Log the check run
     try:
@@ -199,52 +169,3 @@ def run_daily_check() -> dict:
     print(f"{'='*60}\n")
 
     return summary
-
-
-def run_all_monitors(dates: list[str] = None):
-    if dates is None:
-        dates = _default_dates(days_out=30, weekends_only=False)
-
-    print(f"\n{'='*60}")
-    print(f"[Scheduler] Starting all monitors for {len(dates)} dates")
-    print(f"[Scheduler] Date range: {dates[0]} → {dates[-1]}")
-    print(f"{'='*60}\n")
-
-    try:
-        print("[Scheduler] --- Resy ---")
-        run_resy_monitors(dates)
-    except Exception as e:
-        print(f"[Scheduler] Resy monitor crashed: {e}")
-
-    try:
-        print("\n[Scheduler] --- OpenTable ---")
-        run_opentable_monitors(dates)
-    except Exception as e:
-        print(f"[Scheduler] OpenTable monitor crashed: {e}")
-
-    try:
-        print("\n[Scheduler] --- Tock ---")
-        run_tock_monitors(dates)
-    except Exception as e:
-        print(f"[Scheduler] Tock monitor crashed: {e}")
-
-    print(f"\n{'='*60}")
-    print("[Scheduler] All monitors complete.")
-    print(f"{'='*60}\n")
-
-
-if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser(description="Run restaurant availability monitors")
-    parser.add_argument("--dates", nargs="*", help="Specific dates (YYYY-MM-DD)")
-    parser.add_argument("--days-out", type=int, default=30, help="How many days ahead to check")
-    parser.add_argument("--weekends-only", action="store_true", help="Check Fri/Sat/Sun only")
-    args = parser.parse_args()
-
-    if args.dates:
-        dates = args.dates
-    else:
-        dates = _default_dates(days_out=args.days_out, weekends_only=args.weekends_only)
-
-    run_all_monitors(dates)
