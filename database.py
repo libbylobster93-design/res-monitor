@@ -149,7 +149,7 @@ def init_db():
             ("State Bird Provisions","Party: 4 | Fri/Sat | Dinner","OpenTable","https://www.opentable.com/state-bird-provisions",None,  0, 0),
             ("Rich Table",       "Party: 4 | Fri/Sat | Dinner", "OpenTable", "https://www.opentable.com/rich-table",           None,    0, 0),
             ("Commis",           "Party: 4 | Fri/Sat | Dinner", "OpenTable", "https://www.opentable.com/commis",               None,    0, 0),
-            ("Sorrel",           "Party: 4 | Fri/Sat | Dinner", "OpenTable", "https://www.opentable.com/sorrel",               None,    0, 0),
+            ("Sorrel",           "Party: 4 | Fri/Sat | Dinner", "Tock",      "https://www.exploretock.com/sorrel-san-francisco",None,    1, 0),
             # ── Tock — prepaid, notify-only ────────────────────────────────────
             ("Benu",             "Party: 4 | Fri/Sat | Dinner", "Tock",      "https://www.exploretock.com/benu",               None,    1, 0),
             ("Lazy Bear",        "Party: 4 | Fri/Sat | Dinner", "Tock",      "https://www.exploretock.com/lazybear",           None,    1, 0),
