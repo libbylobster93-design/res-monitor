@@ -39,6 +39,8 @@ class MonitorIn(BaseModel):
     status: Optional[str] = "watching"
     prepaid: Optional[int] = 0
     auto_book: Optional[int] = 0
+    venue_id: Optional[str] = None
+    venue_slug: Optional[str] = None
     cc_required: Optional[str] = None
     min_cost: Optional[str] = None
     booking_notes: Optional[str] = None
@@ -48,7 +50,11 @@ class MonitorPatch(BaseModel):
     status: Optional[str] = None
     last_checked: Optional[str] = None
     criteria: Optional[str] = None
+    platform: Optional[str] = None
+    url: Optional[str] = None
     auto_book: Optional[int] = None
+    venue_id: Optional[str] = None
+    venue_slug: Optional[str] = None
     cc_required: Optional[str] = None
     min_cost: Optional[str] = None
     booking_notes: Optional[str] = None
@@ -125,8 +131,8 @@ def add_monitor(body: MonitorIn):
     now = datetime.utcnow().isoformat()
     conn = get_db()
     cur = conn.execute(
-        "INSERT INTO monitors (restaurant, criteria, platform, url, status, prepaid, auto_book, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        (body.restaurant, body.criteria, body.platform, body.url, body.status or "watching", body.prepaid or 0, body.auto_book or 0, now),
+        "INSERT INTO monitors (restaurant, criteria, platform, url, status, prepaid, auto_book, venue_id, venue_slug, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (body.restaurant, body.criteria, body.platform, body.url, body.status or "watching", body.prepaid or 0, body.auto_book or 0, body.venue_id, body.venue_slug, now),
     )
     conn.commit()
     row = conn.execute("SELECT * FROM monitors WHERE id = ?", (cur.lastrowid,)).fetchone()
@@ -158,20 +164,11 @@ def update_monitor(monitor_id: int, body: MonitorPatch):
         raise HTTPException(status_code=404, detail="Monitor not found")
 
     updates = {}
-    if body.status is not None:
-        updates["status"] = body.status
-    if body.last_checked is not None:
-        updates["last_checked"] = body.last_checked
-    if body.criteria is not None:
-        updates["criteria"] = body.criteria
-    if body.auto_book is not None:
-        updates["auto_book"] = body.auto_book
-    if body.cc_required is not None:
-        updates["cc_required"] = body.cc_required
-    if body.min_cost is not None:
-        updates["min_cost"] = body.min_cost
-    if body.booking_notes is not None:
-        updates["booking_notes"] = body.booking_notes
+    for field in ["status", "last_checked", "criteria", "platform", "url",
+                  "auto_book", "venue_id", "venue_slug", "cc_required", "min_cost", "booking_notes"]:
+        val = getattr(body, field, None)
+        if val is not None:
+            updates[field] = val
 
     if updates:
         set_clause = ", ".join(f"{k} = ?" for k in updates)
