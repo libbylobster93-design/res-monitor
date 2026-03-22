@@ -98,7 +98,7 @@ def list_reservations():
 def add_reservation(body: ReservationIn):
     now = datetime.utcnow().isoformat()
     conn = get_db()
-    cur = conn.execute(
+    new_id = conn.execute_insert(
         "INSERT INTO reservations (restaurant, date, time, party_size, confirmation_number, booked_on, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
         (
             body.restaurant,
@@ -111,7 +111,7 @@ def add_reservation(body: ReservationIn):
         ),
     )
     conn.commit()
-    row = conn.execute("SELECT * FROM reservations WHERE id = ?", (cur.lastrowid,)).fetchone()
+    row = conn.execute("SELECT * FROM reservations WHERE id = ?", (new_id,)).fetchone()
     conn.close()
     return dict(row)
 
@@ -130,12 +130,12 @@ def list_monitors():
 def add_monitor(body: MonitorIn):
     now = datetime.utcnow().isoformat()
     conn = get_db()
-    cur = conn.execute(
+    new_id = conn.execute_insert(
         "INSERT INTO monitors (restaurant, criteria, platform, url, status, prepaid, auto_book, venue_id, venue_slug, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (body.restaurant, body.criteria, body.platform, body.url, body.status or "watching", body.prepaid or 0, body.auto_book or 0, body.venue_id, body.venue_slug, now),
     )
     conn.commit()
-    row = conn.execute("SELECT * FROM monitors WHERE id = ?", (cur.lastrowid,)).fetchone()
+    row = conn.execute("SELECT * FROM monitors WHERE id = ?", (new_id,)).fetchone()
     conn.close()
     return dict(row)
 
@@ -199,12 +199,12 @@ def delete_monitor(monitor_id: int):
 def add_log(body: LogEntryIn):
     ts = body.timestamp or datetime.utcnow().isoformat()
     conn = get_db()
-    cur = conn.execute(
+    new_id = conn.execute_insert(
         "INSERT INTO check_log (timestamp, restaurant, result) VALUES (?, ?, ?)",
         (ts, body.restaurant, body.result),
     )
     conn.commit()
-    row = conn.execute("SELECT * FROM check_log WHERE id = ?", (cur.lastrowid,)).fetchone()
+    row = conn.execute("SELECT * FROM check_log WHERE id = ?", (new_id,)).fetchone()
     conn.close()
     return dict(row)
 
@@ -250,7 +250,7 @@ def record_booked(body: BookedIn):
     """Records a completed booking with optional confirmation number."""
     now = datetime.utcnow().isoformat()
     conn = get_db()
-    cur = conn.execute(
+    new_id = conn.execute_insert(
         "INSERT INTO reservations (restaurant, date, time, party_size, confirmation_number, booked_on, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
         (
             body.restaurant,
@@ -263,7 +263,7 @@ def record_booked(body: BookedIn):
         ),
     )
     conn.commit()
-    row = conn.execute("SELECT * FROM reservations WHERE id = ?", (cur.lastrowid,)).fetchone()
+    row = conn.execute("SELECT * FROM reservations WHERE id = ?", (new_id,)).fetchone()
     conn.close()
     return dict(row)
 
