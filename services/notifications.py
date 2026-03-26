@@ -1,55 +1,36 @@
-"""Telegram notification service via openclaw CLI or HTTP API."""
+"""Telegram notification service — direct Bot API (Railway-compatible)."""
 
-import subprocess
 import httpx
 from typing import Optional
+import os
 
-TELEGRAM_CHAT_ID = "8773861980"
-OPENCLAW_TOKEN = "6e0deaef33df03239e01107afa625f6c7bf830a28131cba3"
-OPENCLAW_HTTP_URL = "http://localhost:18789/send"
+# Direct Bot API — works from Railway (no openclaw CLI or localhost needed)
+TELEGRAM_BOT_TOKEN = os.environ.get(
+    "TELEGRAM_BOT_TOKEN", "8536904842:AAGhsh3CJ7vHgG7nnABcQErbE6c7sDqgoX0"
+)
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "8773861980")
 
 
 def send_telegram(message: str) -> bool:
-    """Send a Telegram message via openclaw CLI or HTTP fallback."""
-    # Try CLI first
-    try:
-        result = subprocess.run(
-            [
-                "openclaw", "message", "send",
-                "--channel", "telegram",
-                "--target", TELEGRAM_CHAT_ID,
-                "--message", message
-            ],
-            capture_output=True,
-            text=True,
-            timeout=30
-        )
-        if result.returncode == 0:
-            print(f"[Telegram] Sent via CLI: {message[:50]}...")
-            return True
-    except (FileNotFoundError, subprocess.TimeoutExpired) as e:
-        print(f"[Telegram] CLI failed: {e}, trying HTTP...")
-
-    # Fallback to HTTP
+    """Send a Telegram message directly via Bot API."""
     try:
         resp = httpx.post(
-            OPENCLAW_HTTP_URL,
+            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
             json={
-                "channel": "telegram",
-                "target": TELEGRAM_CHAT_ID,
-                "message": message,
-                "token": OPENCLAW_TOKEN
+                "chat_id": TELEGRAM_CHAT_ID,
+                "text": message,
+                "parse_mode": "Markdown",
+                "disable_web_page_preview": True,
             },
-            timeout=30
+            timeout=15,
         )
         if resp.status_code == 200:
-            print(f"[Telegram] Sent via HTTP: {message[:50]}...")
+            print(f"[Telegram] Sent: {message[:60]}...")
             return True
         else:
-            print(f"[Telegram] HTTP failed with status {resp.status_code}")
+            print(f"[Telegram] API error {resp.status_code}: {resp.text[:200]}")
     except Exception as e:
-        print(f"[Telegram] HTTP failed: {e}")
-
+        print(f"[Telegram] Request failed: {e}")
     return False
 
 

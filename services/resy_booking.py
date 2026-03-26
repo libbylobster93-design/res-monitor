@@ -259,8 +259,27 @@ def check_and_book(
     # Get details and check payment requirement
     details = get_details(config_id, slot["party_size"], token)
     if not details:
-        result["status"] = "error"
-        result["error"] = "Failed to get slot details"
+        # Details API failed (token expired or Resy API issue).
+        # We still have real slots — alert Andrew to book manually.
+        result["status"] = "available"
+        result["error"] = "Details API unavailable — manual booking needed"
+        notify_slot_found(
+            monitor["restaurant"],
+            slot["date"],
+            slot["time"],
+            slot["party_size"],
+            "Resy",
+        )
+        conn = get_db()
+        conn.execute(
+            """INSERT INTO booking_attempts
+               (monitor_id, restaurant_name, platform, slot_date, slot_time, party_size, status, notified)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (monitor.get("id"), monitor["restaurant"], "Resy", slot["date"], slot["time"],
+             slot["party_size"], "alert_only", True)
+        )
+        conn.commit()
+        conn.close()
         return result
 
     # Log booking attempt
