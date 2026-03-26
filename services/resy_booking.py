@@ -77,8 +77,12 @@ def find_slots(
             for slot in venue.get("slots", []):
                 config = slot.get("config", {})
                 date_info = slot.get("date", {})
+                # token field: try both "token" and "id"
+                config_id = config.get("token") or config.get("id") or config.get("config_id")
+                if not config_id:
+                    print(f"[Resy] Slot config keys: {list(config.keys())}")
                 slots.append({
-                    "config_id": config.get("token"),
+                    "config_id": config_id,
                     "time": date_info.get("start"),
                     "date": date,
                     "type": config.get("type"),
@@ -252,8 +256,16 @@ def check_and_book(
     config_id = slot.get("config_id")
 
     if not config_id:
-        result["status"] = "error"
-        result["error"] = "No config_id in slot"
+        # config_id (token) missing from slot — still alert Andrew since we have real availability
+        result["status"] = "available"
+        result["error"] = "No config_id in slot — manual booking needed"
+        notify_slot_found(
+            monitor["restaurant"],
+            slot["date"],
+            slot["time"],
+            slot["party_size"],
+            "Resy",
+        )
         return result
 
     # Get details and check payment requirement
