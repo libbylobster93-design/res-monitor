@@ -93,11 +93,11 @@ def run_daily_check() -> dict:
 
                 if result.get("slots_found"):
                     slots_found += len(result["slots_found"])
+                    alerts_sent += 1  # notify_slot_found always fires when slots exist
                 if result.get("status") == "booked":
                     bookings_made += 1
-                    alerts_sent += 1
-                elif result.get("status") in ("cc_required", "available"):
-                    alerts_sent += 1
+                elif result.get("status") in ("cc_required",):
+                    pass  # cc_required also calls notify_cc_required — counted above
 
             elif platform == "opentable":
                 manual_opentable.append((name, url))

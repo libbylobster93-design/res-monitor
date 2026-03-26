@@ -251,8 +251,18 @@ def check_and_book(
         result["status"] = "no_slots"
         return result
 
-    # Try to book the first available slot
+    # ---- ALERT IMMEDIATELY — slots exist regardless of booking outcome ----
     slot = result["slots_found"][0]
+    print(f"[Resy] Slots found for {monitor['restaurant']} — notifying Andrew")
+    notify_slot_found(
+        monitor["restaurant"],
+        slot["date"],
+        slot["time"],
+        slot["party_size"],
+        "Resy",
+    )
+
+    # Try to book the first available slot
     config_id = slot.get("config_id")
 
     if not config_id:
